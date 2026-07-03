@@ -117,6 +117,13 @@
     color:var(--ink-soft); font-size:13px; font-weight:600;
     padding:4px 8px;
   }
+  .round-card.in-progress{ border-left-color:var(--gold); }
+  .round-card-top{ display:flex; align-items:center; gap:8px; padding-right:44px; }
+  .status-badge{
+    background:var(--gold); color:#fff; font-size:10px; font-weight:800;
+    padding:3px 9px; border-radius:20px; letter-spacing:0.5px;
+  }
+  .resume-hint{ font-size:12px; font-weight:700; color:var(--gold); margin-top:8px; }
 
   .fab{
     position:fixed; right:20px; bottom: calc(24px + env(safe-area-inset-bottom));
@@ -387,6 +394,37 @@
   .confirm-ok-danger{ background:var(--flag-red); color:#fff; }
   .confirm-ok-positive{ background:var(--fairway-deep); color:var(--cream); }
 
+  .sheet-overlay{
+    position:fixed; inset:0; background:rgba(24,32,24,0.5);
+    display:none; align-items:flex-end; z-index:60;
+  }
+  .sheet-overlay.show{ display:flex; }
+  .sheet{
+    background:var(--cream); width:100%; max-height:78vh;
+    border-radius:22px 22px 0 0;
+    display:flex; flex-direction:column;
+  }
+  .sheet-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 8px;
+  }
+  .sheet-title{ font-size:17px; font-weight:800; color:var(--fairway-deep); }
+  .sheet-body{
+    overflow-y:auto;
+    padding:8px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .template-item{
+    background:#fff; border-radius:16px; padding:14px 16px;
+    margin-bottom:10px; box-shadow:var(--shadow); position:relative;
+    cursor:pointer;
+  }
+  .template-name{ font-size:16px; font-weight:800; color:var(--fairway-deep); padding-right:44px; }
+  .template-par{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .template-item .del{
+    position:absolute; top:14px; right:14px;
+    color:var(--ink-soft); font-size:12px; font-weight:700;
+  }
+
   /* ---------------- Mobile fine-tuning ---------------- */
   /* Prevent iOS auto-zoom on focus: inputs must be >=16px (already 17px above) */
 
@@ -465,7 +503,10 @@
       <div style="width:40px"></div>
     </div>
     <div class="setup-body">
-      <div class="field-label">골프장 이름</div>
+      <div class="field-label par-grid-title">
+        <span>골프장 이름</span>
+        <button class="par-preset" id="btn-load-template">불러오기</button>
+      </div>
       <input class="text-input" id="input-course" placeholder="예) 남서울cc" maxlength="30">
 
       <div class="field-label" style="margin-top:26px;">플레이 날짜</div>
@@ -507,6 +548,7 @@
       <div class="nine-label">후반 (10–18)</div>
       <div class="hole-par-grid" id="grid-back9"></div>
 
+      <button class="ghost-btn" id="btn-save-template" style="color:var(--fairway); font-weight:800; margin-top:18px;">💾 이 골프장 정보 저장해두기</button>
       <button class="primary-btn" id="btn-start-round">라운드 시작</button>
     </div>
   </div>
@@ -585,10 +627,21 @@
   </div>
 </div>
 
+<div class="sheet-overlay" id="template-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">저장된 골프장</div>
+      <button class="icon-btn" id="btn-template-close">✕</button>
+    </div>
+    <div class="sheet-body" id="template-list"></div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
   const STORAGE_KEY = "greencount_rounds_v1";
+  const TEMPLATES_KEY = "greencount_templates_v1";
 
   /* ---------------- storage ---------------- */
   function loadRounds(){
@@ -601,6 +654,17 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rounds));
   }
   let rounds = loadRounds();
+
+  function loadTemplates(){
+    try{
+      const raw = localStorage.getItem(TEMPLATES_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveTemplates(t){
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(t));
+  }
+  let templates = loadTemplates();
 
   /* ---------------- helpers ---------------- */
   function uid(){ return 'r_' + Date.now() + '_' + Math.floor(Math.random()*10000); }
@@ -741,20 +805,26 @@
     }
     const sorted = [...rounds].sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
     sorted.forEach(r=>{
+      const status = r.status || 'finished';
+      const inProgress = status === 'in_progress';
       const { total, diff, hasAny } = roundStats(r);
       const card = document.createElement('div');
-      card.className = 'round-card';
+      card.className = 'round-card' + (inProgress ? ' in-progress' : '');
       card.innerHTML = `
         <div class="del" data-id="${r.id}">삭제</div>
-        <div class="date">${fmtDate(r.date)}</div>
+        <div class="round-card-top">
+          <div class="date">${fmtDate(r.date)}</div>
+          ${inProgress ? '<div class="status-badge">진행중</div>' : ''}
+        </div>
         <div class="course">${escapeHtml(r.courseName)}</div>
         <div class="stats">
           <div class="total">${total}</div>
           <div class="to-par ${toParClass(diff)}">${hasAny ? toParLabel(diff) : 'E'}</div>
-        </div>`;
+        </div>
+        ${inProgress ? '<div class="resume-hint">탭하여 이어하기 ›</div>' : ''}`;
       card.addEventListener('click', (e)=>{
         if(e.target.classList.contains('del')) return;
-        openDetail(r.id);
+        if(inProgress) openPlay(r.id); else openDetail(r.id);
       });
       card.querySelector('.del').addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -838,6 +908,78 @@
     renderParGrids();
   });
 
+  /* ---------------- Saved course templates (score card presets) ---------------- */
+  function renderTemplateList(){
+    const list = document.getElementById('template-list');
+    list.innerHTML = '';
+    if(templates.length === 0){
+      list.innerHTML = `
+        <div class="empty-state" style="margin-top:10px;">
+          <div class="flag">📋</div>
+          <h3>저장된 골프장이 없어요</h3>
+          <p>새 라운드 설정 화면 아래의<br>'골프장 정보 저장해두기'로 등록해보세요.</p>
+        </div>`;
+      return;
+    }
+    const sortedT = [...templates].sort((a,b)=> a.name.localeCompare(b.name, 'ko'));
+    sortedT.forEach(t=>{
+      const parSum = t.pars.reduce((a,b)=>a+b,0);
+      const item = document.createElement('div');
+      item.className = 'template-item';
+      item.innerHTML = `
+        <div class="del" data-id="${t.id}">삭제</div>
+        <div class="template-name">${escapeHtml(t.name)}</div>
+        <div class="template-par">코스 파 ${parSum}</div>`;
+      item.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('del')) return;
+        setupPars = [...t.pars];
+        document.getElementById('input-course').value = t.name;
+        renderParGrids();
+        closeTemplateOverlay();
+        showToast(`${t.name} 정보를 불러왔어요`);
+      });
+      item.querySelector('.del').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        askConfirm('골프장 삭제', `저장된 '${t.name}' 정보를 삭제할까요?`, ()=>{
+          templates = templates.filter(x=>x.id !== t.id);
+          saveTemplates(templates);
+          renderTemplateList();
+          showToast('삭제되었습니다');
+        });
+      });
+      list.appendChild(item);
+    });
+  }
+  function openTemplateOverlay(){
+    renderTemplateList();
+    document.getElementById('template-overlay').classList.add('show');
+  }
+  function closeTemplateOverlay(){
+    document.getElementById('template-overlay').classList.remove('show');
+  }
+  document.getElementById('btn-load-template').addEventListener('click', openTemplateOverlay);
+  document.getElementById('btn-template-close').addEventListener('click', closeTemplateOverlay);
+
+  document.getElementById('btn-save-template').addEventListener('click', ()=>{
+    const name = document.getElementById('input-course').value.trim();
+    if(!name){
+      showToast('골프장 이름을 먼저 입력해주세요');
+      return;
+    }
+    const existingIdx = templates.findIndex(t => t.name === name);
+    const doSave = ()=>{
+      const tmpl = { id: existingIdx >= 0 ? templates[existingIdx].id : uid(), name, pars: [...setupPars] };
+      if(existingIdx >= 0) templates[existingIdx] = tmpl; else templates.push(tmpl);
+      saveTemplates(templates);
+      showToast('골프장 정보가 저장되었어요');
+    };
+    if(existingIdx >= 0){
+      askConfirm('골프장 정보 저장', `이미 '${name}' 골프장 정보가 있어요. 덮어쓸까요?`, doSave, '덮어쓰기', 'positive');
+    } else {
+      doSave();
+    }
+  });
+
   document.getElementById('btn-start-round').addEventListener('click', ()=>{
     const course = document.getElementById('input-course').value.trim();
     const date = getSelectedDateISO();
@@ -851,7 +993,8 @@
       date: date,
       pars: [...setupPars],
       scoreMode: setupScoreMode,
-      scores: setupScoreMode === 'zero' ? new Array(18).fill(0) : [...setupPars]
+      scores: setupScoreMode === 'zero' ? new Array(18).fill(0) : [...setupPars],
+      status: 'in_progress'
     };
     rounds.push(newRound);
     saveRounds(rounds);
@@ -869,7 +1012,7 @@
   function openPlay(id){
     activeRoundId = id;
     const r = getActiveRound();
-    currentHole = 0;
+    currentHole = (typeof r.lastHole === 'number') ? r.lastHole : 0;
     document.getElementById('play-course').textContent = r.courseName;
     document.getElementById('play-date').textContent = fmtDate(r.date);
     renderHoleStrip();
@@ -895,11 +1038,7 @@
       }
       chip.className = cls;
       chip.innerHTML = `<div class="hn">${i+1}</div><div class="hs">${untouched ? '-' : sc}</div>`;
-      chip.addEventListener('click', ()=>{
-        currentHole = i;
-        renderHoleStrip();
-        renderPlayHole();
-      });
+      chip.addEventListener('click', ()=> goToHole(i));
       strip.appendChild(chip);
     }
     // auto scroll current into view
@@ -968,14 +1107,24 @@
     renderPlaySummary();
   }
 
+  function goToHole(i){
+    currentHole = i;
+    const r = getActiveRound();
+    r.lastHole = i;
+    saveRounds(rounds);
+    renderHoleStrip();
+    renderPlayHole();
+    renderPlaySummary();
+  }
+
   document.getElementById('btn-stroke-plus').addEventListener('click', ()=> setStroke(1));
   document.getElementById('btn-stroke-minus').addEventListener('click', ()=> setStroke(-1));
 
   document.getElementById('btn-hole-prev').addEventListener('click', ()=>{
-    if(currentHole > 0){ currentHole--; renderHoleStrip(); renderPlayHole(); renderPlaySummary(); }
+    if(currentHole > 0) goToHole(currentHole - 1);
   });
   document.getElementById('btn-hole-next').addEventListener('click', ()=>{
-    if(currentHole < 17){ currentHole++; renderHoleStrip(); renderPlayHole(); renderPlaySummary(); }
+    if(currentHole < 17) goToHole(currentHole + 1);
     else {
       // last hole -> prompt finish
       document.getElementById('btn-finish-round').click();
@@ -983,7 +1132,7 @@
   });
 
   document.getElementById('btn-play-close').addEventListener('click', ()=>{
-    askConfirm('라운드 종료', '지금까지 입력한 스코어는 저장되어 있어요. 홈으로 돌아갈까요?', ()=>{
+    askConfirm('임시 저장', '지금까지 입력한 스코어가 임시 저장되어 있어요. 홈 화면에서 다시 이어할 수 있습니다.', ()=>{
       showScreen('screen-home');
       renderHome();
     }, '홈으로', 'positive');
@@ -998,6 +1147,8 @@
       if(missing > 0) msg = `${missing}개 홀이 아직 입력되지 않았어요. 그래도 저장할까요?`;
     }
     askConfirm('라운드 종료 및 저장', msg, ()=>{
+      r.status = 'finished';
+      saveRounds(rounds);
       showScreen('screen-home');
       renderHome();
       showToast('라운드가 저장되었습니다');
