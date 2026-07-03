@@ -36,7 +36,7 @@
     user-select:none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
-  #app{ min-height:100vh; display:flex; flex-direction:column; }
+  #app{ min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
 
   /* ---------- Top bar ---------- */
   .topbar{
@@ -76,7 +76,7 @@
 
   /* ---------- Screens ---------- */
   .screen{ display:none; flex:1; flex-direction:column; }
-  .screen.active{ display:flex; }
+  .screen.active{ display:flex; min-height:0; }
 
   /* ---------- Home / list ---------- */
   #home-list{
@@ -249,17 +249,21 @@
     justify-content:center;
     padding:20px;
     gap:18px;
+    overflow-y:auto;
+    min-height:0;
   }
   .hole-title{ text-align:center; }
   .hole-title .big{ font-size:15px; font-weight:800; letter-spacing:2px; color:var(--ink-soft); text-transform:uppercase; }
   .hole-title .par{ font-size:15px; color:var(--gold); font-weight:800; margin-top:4px; }
 
-  .stroke-wrap{ display:flex; align-items:center; gap:26px; }
+  .stroke-wrap{ display:flex; flex-direction:column; align-items:center; gap:22px; width:100%; max-width:380px; }
+  .stroke-buttons-row{ display:flex; gap:16px; width:100%; }
   .stroke-btn{
-    width:64px; height:64px;
-    border-radius:50%;
+    flex:1;
+    height:84px;
+    border-radius:22px;
     border:none;
-    font-size:30px;
+    font-size:36px;
     font-weight:800;
     display:flex; align-items:center; justify-content:center;
     box-shadow:var(--shadow);
@@ -268,14 +272,14 @@
   .stroke-btn.plus{ background:var(--flag-red); color:#fff; }
   .stroke-btn:active{ transform:scale(0.94); }
   .stroke-display{
-    width:120px; height:120px;
+    width:200px; height:200px;
     border-radius:50%;
     background:#fff;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    box-shadow: 0 0 0 8px var(--cream-dim), var(--shadow);
+    box-shadow: 0 0 0 10px var(--cream-dim), var(--shadow);
   }
-  .stroke-display .val{ font-size:52px; font-weight:800; color:var(--fairway-deep); line-height:1; }
-  .stroke-display .rel{ font-size:12px; font-weight:700; margin-top:2px; color:var(--ink-soft); }
+  .stroke-display .val{ font-size:84px; font-weight:800; color:var(--fairway-deep); line-height:1; }
+  .stroke-display .rel{ font-size:15px; font-weight:700; margin-top:6px; color:var(--ink-soft); }
 
   .nav-row{
     display:flex; gap:12px; width:100%; max-width:360px;
@@ -288,6 +292,14 @@
   .nav-btn:active{ background:var(--fairway-bright); color:#fff; }
   .nav-btn.finish{ background:var(--fairway-deep); color:var(--cream); }
   .nav-btn:disabled{ opacity:0.35; }
+
+  .bottom-bar{
+    flex:0 0 auto;
+    background:var(--cream);
+    border-top:1px solid var(--line);
+    padding:12px 20px calc(12px + env(safe-area-inset-bottom));
+    box-shadow:0 -6px 16px rgba(24,32,24,0.08);
+  }
 
   /* ---------- Detail (view saved round) ---------- */
   .detail-table{ padding:14px 16px 30px; overflow-y:auto; flex:1; }
@@ -331,7 +343,62 @@
   .confirm-actions{ display:flex; gap:10px; }
   .confirm-actions button{ flex:1; padding:14px; border-radius:14px; border:none; font-weight:800; font-size:15px; }
   .confirm-cancel{ background:var(--cream-dim); color:var(--ink); }
-  .confirm-ok{ background:var(--flag-red); color:#fff; }
+  .confirm-ok-danger{ background:var(--flag-red); color:#fff; }
+  .confirm-ok-positive{ background:var(--fairway-deep); color:var(--cream); }
+
+  /* ---------------- Mobile fine-tuning ---------------- */
+  /* Prevent iOS auto-zoom on focus: inputs must be >=16px (already 17px above) */
+
+  /* Compact vertical rhythm for shorter phones (SE, mini) and landscape */
+  @media (max-height: 720px){
+    .topbar{ padding:12px 18px 12px; }
+    .round-header{ padding:10px 16px 12px; }
+    .rh-summary{ margin-top:8px; gap:14px; }
+    .hole-strip{ padding:10px 12px 8px; }
+    .play-area{ padding:10px 16px; gap:10px; }
+    .stroke-wrap{ gap:14px; }
+    .stroke-display{ width:150px; height:150px; box-shadow:0 0 0 8px var(--cream-dim), var(--shadow); }
+    .stroke-display .val{ font-size:58px; }
+    .stroke-buttons-row{ gap:12px; }
+    .stroke-btn{ height:64px; font-size:28px; border-radius:18px; }
+    .hole-title .big{ font-size:13px; }
+    .nav-btn{ padding:12px; font-size:14px; }
+    .setup-body{ padding:14px 18px 24px; }
+    .field-label{ margin:16px 0 6px; }
+    .hole-par-grid{ gap:8px; }
+    .hole-par-cell{ padding:8px 6px; }
+    .primary-btn{ margin-top:18px; padding:14px; }
+  }
+
+  /* Very narrow phones (iPhone SE 1st/2nd gen width, older small Androids) */
+  @media (max-width: 360px){
+    .hole-par-grid{ gap:7px; }
+    .hole-par-cell .pval{ font-size:22px; }
+    .par-step-btn{ width:27px; height:27px; font-size:15px; }
+    .stroke-wrap{ gap:12px; }
+    .stroke-display{ width:160px; height:160px; }
+    .stroke-display .val{ font-size:60px; }
+    .stroke-btn{ height:64px; font-size:28px; }
+    .round-card .total{ font-size:26px; }
+    .brand{ font-size:19px !important; }
+  }
+
+  /* Landscape phones: stack play controls tighter, allow scroll fallback */
+  @media (max-height: 430px) and (orientation: landscape){
+    .play-area{ overflow-y:auto; }
+    .stroke-wrap{ gap:12px; max-width:320px; }
+    .stroke-display{ width:120px; height:120px; }
+    .stroke-display .val{ font-size:46px; }
+    .stroke-btn{ height:56px; font-size:24px; border-radius:16px; }
+    .nav-row{ max-width:420px; }
+  }
+
+  /* Larger phones (Pro Max) get a touch more breathing room */
+  @media (min-width: 428px){
+    .play-area{ gap:22px; }
+    .stroke-display{ width:220px; height:220px; }
+    .stroke-display .val{ font-size:92px; }
+  }
 </style>
 </head>
 <body>
@@ -388,7 +455,7 @@
       <div class="rh-summary">
         <div class="rh-stat"><div class="n" id="play-total">0</div><div class="l">타수</div></div>
         <div class="rh-stat"><div class="n" id="play-topar">E</div><div class="l">파 대비</div></div>
-        <div class="rh-stat"><div class="n" id="play-thru">0/18</div><div class="l">진행</div></div>
+        <div class="rh-stat"><div class="n" id="play-thru">0/18</div><div class="l">현재 홀</div></div>
       </div>
     </div>
     <div class="hole-strip" id="hole-strip"></div>
@@ -398,20 +465,22 @@
         <div class="par" id="play-holepar">PAR 4</div>
       </div>
       <div class="stroke-wrap">
-        <button class="stroke-btn minus" id="btn-stroke-minus">－</button>
         <div class="stroke-display">
           <div class="val" id="stroke-val">0</div>
           <div class="rel" id="stroke-rel">-</div>
         </div>
-        <button class="stroke-btn plus" id="btn-stroke-plus">＋</button>
+        <div class="stroke-buttons-row">
+          <button class="stroke-btn minus" id="btn-stroke-minus">－</button>
+          <button class="stroke-btn plus" id="btn-stroke-plus">＋</button>
+        </div>
       </div>
       <div class="nav-row">
         <button class="nav-btn" id="btn-hole-prev">‹ 이전 홀</button>
         <button class="nav-btn" id="btn-hole-next">다음 홀 ›</button>
       </div>
-      <div class="nav-row">
-        <button class="nav-btn finish" id="btn-finish-round" style="width:100%">라운드 종료 및 저장</button>
-      </div>
+    </div>
+    <div class="bottom-bar">
+      <button class="nav-btn finish" id="btn-finish-round" style="width:100%">라운드 종료 및 저장</button>
     </div>
   </div>
 
@@ -496,9 +565,13 @@
 
   /* ---------------- confirm dialog ---------------- */
   let confirmCb = null;
-  function askConfirm(title, msg, cb){
+  function askConfirm(title, msg, cb, okText, okKind){
     document.getElementById('confirm-title').textContent = title;
     document.getElementById('confirm-msg').textContent = msg;
+    const okBtn = document.getElementById('confirm-ok');
+    okBtn.textContent = okText || '삭제';
+    okBtn.classList.remove('confirm-ok-danger', 'confirm-ok-positive');
+    okBtn.classList.add(okKind === 'positive' ? 'confirm-ok-positive' : 'confirm-ok-danger');
     confirmCb = cb;
     document.getElementById('confirm-overlay').classList.add('show');
   }
@@ -622,7 +695,7 @@
       courseName: course,
       date: date,
       pars: [...setupPars],
-      scores: new Array(18).fill(0)
+      scores: [...setupPars]
     };
     rounds.push(newRound);
     saveRounds(rounds);
@@ -641,9 +714,6 @@
     activeRoundId = id;
     const r = getActiveRound();
     currentHole = 0;
-    // jump to first unentered hole if resuming
-    const firstEmpty = r.scores.findIndex(s => !s || s === 0);
-    if(firstEmpty !== -1) currentHole = firstEmpty;
     document.getElementById('play-course').textContent = r.courseName;
     document.getElementById('play-date').textContent = fmtDate(r.date);
     renderHoleStrip();
@@ -661,12 +731,12 @@
       const sc = r.scores[i];
       let cls = 'hole-chip';
       if(i === currentHole) cls += ' current';
-      else if(sc && sc > 0){
+      else {
         const diff = sc - r.pars[i];
         cls += ' done ' + toParClass(diff);
       }
       chip.className = cls;
-      chip.innerHTML = `<div class="hn">${i+1}</div><div class="hs">${sc && sc>0 ? sc : '-'}</div>`;
+      chip.innerHTML = `<div class="hn">${i+1}</div><div class="hs">${sc}</div>`;
       chip.addEventListener('click', ()=>{
         currentHole = i;
         renderHoleStrip();
@@ -685,15 +755,11 @@
     const r = getActiveRound();
     document.getElementById('play-holenum').textContent = 'HOLE ' + (currentHole+1);
     document.getElementById('play-holepar').textContent = 'PAR ' + r.pars[currentHole];
-    const sc = r.scores[currentHole] || 0;
+    const sc = r.scores[currentHole];
     document.getElementById('stroke-val').textContent = sc;
     const relEl = document.getElementById('stroke-rel');
-    if(sc === 0){
-      relEl.textContent = '입력 전';
-    } else {
-      const diff = sc - r.pars[currentHole];
-      relEl.textContent = toParLabel(diff) + ' (' + parName(diff, sc) + ')';
-    }
+    const diff = sc - r.pars[currentHole];
+    relEl.textContent = toParLabel(diff) + ' · ' + parName(diff, sc);
     document.getElementById('btn-hole-prev').disabled = currentHole === 0;
     document.getElementById('btn-hole-next').textContent = currentHole === 17 ? '완료 ›' : '다음 홀 ›';
   }
@@ -712,23 +778,18 @@
 
   function renderPlaySummary(){
     const r = getActiveRound();
-    const entered = r.scores.filter(s=>s>0);
-    const total = entered.reduce((a,b)=>a+b,0);
-    const parSoFar = r.pars.reduce((sum,p,i)=> r.scores[i]>0 ? sum+p : sum, 0);
-    const diff = total - parSoFar;
+    const total = r.scores.reduce((a,b)=>a+b,0);
+    const parSum = r.pars.reduce((a,b)=>a+b,0);
+    const diff = total - parSum;
     document.getElementById('play-total').textContent = total;
-    document.getElementById('play-topar').textContent = entered.length ? toParLabel(diff) : 'E';
-    document.getElementById('play-thru').textContent = entered.length + '/18';
+    document.getElementById('play-topar').textContent = toParLabel(diff);
+    document.getElementById('play-thru').textContent = (currentHole+1) + '/18';
   }
 
   function setStroke(delta){
     const r = getActiveRound();
-    let sc = r.scores[currentHole] || 0;
-    if(sc === 0 && delta > 0){
-      sc = Math.max(1, r.pars[currentHole] + delta - r.pars[currentHole]); // starts logically
-    }
-    sc = sc + delta;
-    if(sc < 0) sc = 0;
+    let sc = r.scores[currentHole] + delta;
+    if(sc < 1) sc = 1;
     if(sc > 15) sc = 15;
     r.scores[currentHole] = sc;
     saveRounds(rounds);
@@ -737,32 +798,14 @@
     renderPlaySummary();
   }
 
-  document.getElementById('btn-stroke-plus').addEventListener('click', ()=>{
-    const r = getActiveRound();
-    if(!r.scores[currentHole] || r.scores[currentHole] === 0){
-      r.scores[currentHole] = 1;
-    } else {
-      r.scores[currentHole] += 1;
-    }
-    if(r.scores[currentHole] > 15) r.scores[currentHole] = 15;
-    saveRounds(rounds);
-    renderPlayHole(); renderHoleStrip(); renderPlaySummary();
-  });
-  document.getElementById('btn-stroke-minus').addEventListener('click', ()=>{
-    const r = getActiveRound();
-    let sc = r.scores[currentHole] || 0;
-    sc -= 1;
-    if(sc < 0) sc = 0;
-    r.scores[currentHole] = sc;
-    saveRounds(rounds);
-    renderPlayHole(); renderHoleStrip(); renderPlaySummary();
-  });
+  document.getElementById('btn-stroke-plus').addEventListener('click', ()=> setStroke(1));
+  document.getElementById('btn-stroke-minus').addEventListener('click', ()=> setStroke(-1));
 
   document.getElementById('btn-hole-prev').addEventListener('click', ()=>{
-    if(currentHole > 0){ currentHole--; renderHoleStrip(); renderPlayHole(); }
+    if(currentHole > 0){ currentHole--; renderHoleStrip(); renderPlayHole(); renderPlaySummary(); }
   });
   document.getElementById('btn-hole-next').addEventListener('click', ()=>{
-    if(currentHole < 17){ currentHole++; renderHoleStrip(); renderPlayHole(); }
+    if(currentHole < 17){ currentHole++; renderHoleStrip(); renderPlayHole(); renderPlaySummary(); }
     else {
       // last hole -> prompt finish
       document.getElementById('btn-finish-round').click();
@@ -773,20 +816,15 @@
     askConfirm('라운드 종료', '지금까지 입력한 스코어는 저장되어 있어요. 홈으로 돌아갈까요?', ()=>{
       showScreen('screen-home');
       renderHome();
-    });
+    }, '홈으로', 'positive');
   });
 
   document.getElementById('btn-finish-round').addEventListener('click', ()=>{
-    const r = getActiveRound();
-    const missing = r.scores.filter(s=>!s || s===0).length;
-    const msg = missing > 0
-      ? `${missing}개 홀이 아직 입력되지 않았어요. 그래도 저장할까요?`
-      : '라운드를 저장하고 홈으로 이동합니다.';
-    askConfirm('라운드 종료 및 저장', msg, ()=>{
+    askConfirm('라운드 종료 및 저장', '라운드를 저장하고 홈으로 이동합니다.', ()=>{
       showScreen('screen-home');
       renderHome();
       showToast('라운드가 저장되었습니다');
-    });
+    }, '저장', 'positive');
   });
 
   /* ---------------- DETAIL screen ---------------- */
