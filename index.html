@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="골프기록">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1F3D2B">
+<title>골프 스코어</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3D2B'/%3E%3Ccircle cx='50' cy='40' r='16' fill='%23F7F3E8'/%3E%3Crect x='47' y='40' width='4' height='38' fill='%23F7F3E8'/%3E%3Cpath d='M51 42 L74 50 L51 58 Z' fill='%23C4432C'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --fairway-deep:#1F3D2B;
+    --fairway:#2D5F3F;
+    --fairway-bright:#4A8B5C;
+    --cream:#F7F3E8;
+    --cream-dim:#E8E1D0;
+    --flag-red:#C4432C;
+    --ink:#182018;
+    --ink-soft:#5B685E;
+    --gold:#C79A3D;
+    --line: rgba(24,32,24,0.10);
+    --shadow: 0 8px 24px rgba(24,32,24,0.14);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    overscroll-behavior:none;
+    -webkit-user-select:none;
+    user-select:none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #app{ min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    background:var(--fairway-deep);
+    color:var(--cream);
+    padding:18px 20px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    position:relative;
+  }
+  .topbar .brand{
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:0.5px;
+  }
+  .topbar .brand small{
+    display:block;
+    font-size:11px;
+    font-weight:500;
+    letter-spacing:2px;
+    color:var(--gold);
+    margin-top:2px;
+    text-transform:uppercase;
+  }
+  .icon-btn{
+    background:rgba(247,243,232,0.12);
+    border:none;
+    color:var(--cream);
+    width:40px;height:40px;
+    border-radius:12px;
+    font-size:20px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .icon-btn:active{ background:rgba(247,243,232,0.24); }
+
+  /* ---------- Screens ---------- */
+  .screen{ display:none; flex:1; flex-direction:column; }
+  .screen.active{ display:flex; }
+
+  /* ---------- Home / list ---------- */
+  #home-list{
+    flex:1;
+    padding:16px 16px 100px;
+    overflow-y:auto;
+  }
+  .empty-state{
+    margin-top:60px;
+    text-align:center;
+    color:var(--ink-soft);
+    padding:0 30px;
+  }
+  .empty-state .flag{ font-size:44px; margin-bottom:10px; }
+  .empty-state h3{ margin:0 0 6px; color:var(--ink); font-size:18px; }
+  .empty-state p{ margin:0; font-size:14px; line-height:1.5; }
+
+  .round-card{
+    background:#fff;
+    border-radius:18px;
+    padding:16px 18px;
+    margin-bottom:12px;
+    box-shadow:var(--shadow);
+    border-left:6px solid var(--fairway-bright);
+    cursor:pointer;
+    position:relative;
+  }
+  .round-card .date{ font-size:12px; color:var(--ink-soft); font-weight:600; letter-spacing:0.5px; }
+  .round-card .course{ font-size:19px; font-weight:800; margin-top:2px; color:var(--fairway-deep); }
+  .round-card .stats{ display:flex; align-items:baseline; gap:10px; margin-top:10px; }
+  .round-card .total{ font-size:30px; font-weight:800; }
+  .round-card .to-par{ font-size:14px; font-weight:700; padding:3px 10px; border-radius:20px; }
+  .to-par.under{ background:#E4EEE6; color:var(--fairway); }
+  .to-par.even{ background:#EFEAD9; color:var(--ink-soft); }
+  .to-par.over{ background:#F7E4DE; color:var(--flag-red); }
+  .round-card .del{
+    position:absolute; top:14px; right:14px;
+    color:var(--ink-soft); font-size:13px; font-weight:600;
+    padding:4px 8px;
+  }
+
+  .fab{
+    position:fixed; right:20px; bottom: calc(24px + env(safe-area-inset-bottom));
+    background:var(--flag-red);
+    color:#fff;
+    border:none;
+    border-radius:30px;
+    padding:16px 24px;
+    font-size:16px;
+    font-weight:800;
+    box-shadow:0 10px 24px rgba(196,67,44,0.4);
+    display:flex; align-items:center; gap:8px;
+    cursor:pointer;
+    z-index:20;
+  }
+  .fab:active{ transform:scale(0.97); }
+
+  /* ---------- Setup screen ---------- */
+  .setup-body{ flex:1; overflow-y:auto; padding:20px 20px 40px; }
+  .field-label{
+    font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
+    color:var(--ink-soft); margin:22px 0 8px;
+  }
+  .text-input{
+    width:100%;
+    padding:14px 16px;
+    font-size:17px;
+    border-radius:14px;
+    border:2px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    font-weight:600;
+  }
+  .text-input:focus{ outline:none; border-color:var(--fairway-bright); }
+
+  .par-grid-title{ display:flex; justify-content:space-between; align-items:center; }
+  .par-preset{
+    font-size:12px; font-weight:700; color:var(--fairway);
+    background:var(--cream-dim); padding:6px 10px; border-radius:10px; border:none;
+  }
+  .nine-label{
+    font-size:12px; font-weight:800; color:var(--gold); letter-spacing:1px;
+    margin:16px 0 8px; text-transform:uppercase;
+  }
+  .hole-par-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:10px;
+  }
+  .hole-par-cell{
+    background:#fff;
+    border-radius:14px;
+    padding:10px 8px;
+    text-align:center;
+    box-shadow:0 2px 8px rgba(24,32,24,0.06);
+    border:2px solid transparent;
+  }
+  .hole-par-cell .hnum{ font-size:11px; font-weight:800; color:var(--ink-soft); }
+  .hole-par-cell .pval{ font-size:26px; font-weight:800; margin:4px 0; color:var(--fairway-deep); }
+  .hole-par-cell .par-steps{ display:flex; justify-content:center; gap:6px; }
+  .par-step-btn{
+    width:30px; height:30px; border-radius:9px; border:none;
+    background:var(--cream-dim); color:var(--fairway-deep);
+    font-size:17px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  }
+  .par-step-btn:active{ background:var(--fairway-bright); color:#fff; }
+
+  .primary-btn{
+    width:100%;
+    padding:16px;
+    background:var(--fairway-deep);
+    color:var(--cream);
+    border:none;
+    border-radius:16px;
+    font-size:17px;
+    font-weight:800;
+    margin-top:28px;
+    box-shadow:var(--shadow);
+  }
+  .primary-btn:active{ opacity:0.9; }
+  .ghost-btn{
+    width:100%; padding:14px; background:transparent; color:var(--ink-soft);
+    border:none; font-size:15px; font-weight:700; margin-top:10px;
+  }
+
+  /* ---------- Round / play screen ---------- */
+  .round-header{
+    background:var(--fairway-deep);
+    color:var(--cream);
+    padding:14px 18px 16px;
+  }
+  .round-header .rh-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .round-header .rh-course{ font-size:18px; font-weight:800; }
+  .round-header .rh-date{ font-size:12px; color:rgba(247,243,232,0.65); margin-top:2px; }
+  .rh-summary{ display:flex; gap:18px; margin-top:12px; }
+  .rh-stat{ }
+  .rh-stat .n{ font-size:22px; font-weight:800; }
+  .rh-stat .l{ font-size:10px; letter-spacing:1px; text-transform:uppercase; color:rgba(247,243,232,0.6); }
+
+  .hole-strip{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:14px 14px 10px;
+    background:#fff;
+    border-bottom:1px solid var(--line);
+  }
+  .hole-chip{
+    flex:0 0 auto;
+    width:44px;height:52px;
+    border-radius:12px;
+    background:var(--cream-dim);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-weight:800;
+    color:var(--ink-soft);
+    border:2px solid transparent;
+  }
+  .hole-chip .hn{ font-size:12px; }
+  .hole-chip .hs{ font-size:16px; margin-top:2px; }
+  .hole-chip.current{ border-color:var(--fairway-bright); background:#fff; color:var(--fairway-deep); }
+  .hole-chip.done.under{ background:#E4EEE6; color:var(--fairway); }
+  .hole-chip.done.over{ background:#F7E4DE; color:var(--flag-red); }
+  .hole-chip.done.even{ background:var(--cream-dim); color:var(--ink); }
+
+  .play-area{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    gap:18px;
+  }
+  .hole-title{ text-align:center; }
+  .hole-title .big{ font-size:15px; font-weight:800; letter-spacing:2px; color:var(--ink-soft); text-transform:uppercase; }
+  .hole-title .par{ font-size:15px; color:var(--gold); font-weight:800; margin-top:4px; }
+
+  .stroke-wrap{ display:flex; align-items:center; gap:26px; }
+  .stroke-btn{
+    width:64px; height:64px;
+    border-radius:50%;
+    border:none;
+    font-size:30px;
+    font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow);
+  }
+  .stroke-btn.minus{ background:#fff; color:var(--ink-soft); border:2px solid var(--line); }
+  .stroke-btn.plus{ background:var(--flag-red); color:#fff; }
+  .stroke-btn:active{ transform:scale(0.94); }
+  .stroke-display{
+    width:120px; height:120px;
+    border-radius:50%;
+    background:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow: 0 0 0 8px var(--cream-dim), var(--shadow);
+  }
+  .stroke-display .val{ font-size:52px; font-weight:800; color:var(--fairway-deep); line-height:1; }
+  .stroke-display .rel{ font-size:12px; font-weight:700; margin-top:2px; color:var(--ink-soft); }
+
+  .nav-row{
+    display:flex; gap:12px; width:100%; max-width:360px;
+  }
+  .nav-btn{
+    flex:1; padding:14px; border-radius:14px; border:none;
+    font-size:15px; font-weight:800;
+    background:var(--cream-dim); color:var(--fairway-deep);
+  }
+  .nav-btn:active{ background:var(--fairway-bright); color:#fff; }
+  .nav-btn.finish{ background:var(--fairway-deep); color:var(--cream); }
+  .nav-btn:disabled{ opacity:0.35; }
+
+  /* ---------- Detail (view saved round) ---------- */
+  .detail-table{ padding:14px 16px 30px; overflow-y:auto; flex:1; }
+  .detail-nine{ margin-bottom:18px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:var(--shadow); }
+  .detail-row{
+    display:grid; grid-template-columns: 50px 1fr 60px 60px;
+    padding:10px 16px;
+    font-size:14px;
+    border-bottom:1px solid var(--line);
+    align-items:center;
+  }
+  .detail-row.head{ background:var(--fairway-deep); color:var(--cream); font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .detail-row:last-child{ border-bottom:none; }
+  .detail-row .hc{ font-weight:800; color:var(--ink-soft); }
+  .detail-row .sc{ font-weight:800; text-align:right; }
+  .detail-row .pc{ text-align:right; color:var(--ink-soft); }
+  .detail-row .diffc{ text-align:right; font-weight:700; }
+  .diffc.under{ color:var(--fairway); }
+  .diffc.over{ color:var(--flag-red); }
+  .diffc.even{ color:var(--ink-soft); }
+
+  .toast{
+    position:fixed; left:50%; bottom:30px; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:10px 18px; border-radius:30px;
+    font-size:13px; font-weight:600; z-index:99; opacity:0; pointer-events:none;
+    transition:opacity .25s;
+  }
+  .toast.show{ opacity:1; }
+
+  .confirm-overlay{
+    position:fixed; inset:0; background:rgba(24,32,24,0.5);
+    display:none; align-items:flex-end; z-index:50;
+  }
+  .confirm-overlay.show{ display:flex; }
+  .confirm-sheet{
+    background:var(--cream); width:100%; border-radius:22px 22px 0 0;
+    padding:22px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .confirm-sheet h3{ margin:0 0 8px; font-size:17px; }
+  .confirm-sheet p{ margin:0 0 18px; color:var(--ink-soft); font-size:14px; }
+  .confirm-actions{ display:flex; gap:10px; }
+  .confirm-actions button{ flex:1; padding:14px; border-radius:14px; border:none; font-weight:800; font-size:15px; }
+  .confirm-cancel{ background:var(--cream-dim); color:var(--ink); }
+  .confirm-ok{ background:var(--flag-red); color:#fff; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== HOME ===================== -->
+  <div class="screen active" id="screen-home">
+    <div class="topbar">
+      <div class="brand">GreenCount<small>Golf Score Tracker</small></div>
+    </div>
+    <div id="home-list"></div>
+    <button class="fab" id="btn-new-round">＋ 새 라운드</button>
+  </div>
+
+  <!-- ===================== SETUP (new round) ===================== -->
+  <div class="screen" id="screen-setup">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-setup-back">‹</button>
+      <div class="brand" style="font-size:18px">새 라운드</div>
+      <div style="width:40px"></div>
+    </div>
+    <div class="setup-body">
+      <div class="field-label">골프장 이름</div>
+      <input class="text-input" id="input-course" placeholder="예) 남서울cc" maxlength="30">
+
+      <div class="field-label" style="margin-top:26px;">플레이 날짜</div>
+      <input class="text-input" id="input-date" type="date">
+
+      <div class="field-label par-grid-title" style="margin-top:26px;">
+        <span>홀별 파(PAR)</span>
+        <button class="par-preset" id="btn-preset-72">기본 72 적용</button>
+      </div>
+
+      <div class="nine-label">전반 (1–9)</div>
+      <div class="hole-par-grid" id="grid-front9"></div>
+
+      <div class="nine-label">후반 (10–18)</div>
+      <div class="hole-par-grid" id="grid-back9"></div>
+
+      <button class="primary-btn" id="btn-start-round">라운드 시작</button>
+    </div>
+  </div>
+
+  <!-- ===================== PLAY ===================== -->
+  <div class="screen" id="screen-play">
+    <div class="round-header">
+      <div class="rh-top">
+        <div>
+          <div class="rh-course" id="play-course">-</div>
+          <div class="rh-date" id="play-date">-</div>
+        </div>
+        <button class="icon-btn" id="btn-play-close">✕</button>
+      </div>
+      <div class="rh-summary">
+        <div class="rh-stat"><div class="n" id="play-total">0</div><div class="l">타수</div></div>
+        <div class="rh-stat"><div class="n" id="play-topar">E</div><div class="l">파 대비</div></div>
+        <div class="rh-stat"><div class="n" id="play-thru">0/18</div><div class="l">진행</div></div>
+      </div>
+    </div>
+    <div class="hole-strip" id="hole-strip"></div>
+    <div class="play-area">
+      <div class="hole-title">
+        <div class="big" id="play-holenum">HOLE 1</div>
+        <div class="par" id="play-holepar">PAR 4</div>
+      </div>
+      <div class="stroke-wrap">
+        <button class="stroke-btn minus" id="btn-stroke-minus">－</button>
+        <div class="stroke-display">
+          <div class="val" id="stroke-val">0</div>
+          <div class="rel" id="stroke-rel">-</div>
+        </div>
+        <button class="stroke-btn plus" id="btn-stroke-plus">＋</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn" id="btn-hole-prev">‹ 이전 홀</button>
+        <button class="nav-btn" id="btn-hole-next">다음 홀 ›</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn finish" id="btn-finish-round" style="width:100%">라운드 종료 및 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DETAIL (saved round view) ===================== -->
+  <div class="screen" id="screen-detail">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-detail-back">‹</button>
+      <div class="brand" style="font-size:18px" id="detail-title">라운드 기록</div>
+      <button class="icon-btn" id="btn-detail-del">🗑</button>
+    </div>
+    <div class="round-header" style="border-radius:0;">
+      <div class="rh-summary">
+        <div class="rh-stat"><div class="n" id="detail-total">0</div><div class="l">타수</div></div>
+        <div class="rh-stat"><div class="n" id="detail-topar">E</div><div class="l">파 대비</div></div>
+        <div class="rh-stat"><div class="n" id="detail-parsum">72</div><div class="l">코스 파</div></div>
+      </div>
+    </div>
+    <div class="detail-table" id="detail-table"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-sheet">
+    <h3 id="confirm-title">삭제하시겠습니까?</h3>
+    <p id="confirm-msg">이 작업은 되돌릴 수 없습니다.</p>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" id="confirm-cancel">취소</button>
+      <button class="confirm-ok" id="confirm-ok">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const STORAGE_KEY = "greencount_rounds_v1";
+
+  /* ---------------- storage ---------------- */
+  function loadRounds(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveRounds(rounds){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rounds));
+  }
+  let rounds = loadRounds();
+
+  /* ---------------- helpers ---------------- */
+  function uid(){ return 'r_' + Date.now() + '_' + Math.floor(Math.random()*10000); }
+  function fmtDate(iso){
+    const d = new Date(iso + 'T00:00:00');
+    if(isNaN(d)) return iso;
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function todayISO(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function toParLabel(diff){
+    if(diff === 0) return 'E';
+    return diff > 0 ? ('+' + diff) : String(diff);
+  }
+  function toParClass(diff){
+    if(diff === 0) return 'even';
+    return diff > 0 ? 'over' : 'under';
+  }
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=> t.classList.remove('show'), 1600);
+  }
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  /* ---------------- confirm dialog ---------------- */
+  let confirmCb = null;
+  function askConfirm(title, msg, cb){
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = msg;
+    confirmCb = cb;
+    document.getElementById('confirm-overlay').classList.add('show');
+  }
+  document.getElementById('confirm-cancel').addEventListener('click', ()=>{
+    document.getElementById('confirm-overlay').classList.remove('show');
+    confirmCb = null;
+  });
+  document.getElementById('confirm-ok').addEventListener('click', ()=>{
+    document.getElementById('confirm-overlay').classList.remove('show');
+    if(confirmCb) confirmCb();
+    confirmCb = null;
+  });
+
+  /* ---------------- HOME rendering ---------------- */
+  function renderHome(){
+    const list = document.getElementById('home-list');
+    list.innerHTML = '';
+    if(rounds.length === 0){
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="flag">⛳</div>
+          <h3>아직 기록된 라운드가 없어요</h3>
+          <p>오른쪽 아래 '새 라운드' 버튼을 눌러<br>골프장과 파를 설정하고 시작해보세요.</p>
+        </div>`;
+      return;
+    }
+    const sorted = [...rounds].sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
+    sorted.forEach(r=>{
+      const total = r.scores.reduce((a,b)=>a+(b||0),0);
+      const parSum = r.pars.reduce((a,b)=>a+(b||0),0);
+      const diff = total - parSum;
+      const card = document.createElement('div');
+      card.className = 'round-card';
+      card.innerHTML = `
+        <div class="del" data-id="${r.id}">삭제</div>
+        <div class="date">${fmtDate(r.date)}</div>
+        <div class="course">${escapeHtml(r.courseName)}</div>
+        <div class="stats">
+          <div class="total">${total}</div>
+          <div class="to-par ${toParClass(diff)}">${toParLabel(diff)}</div>
+        </div>`;
+      card.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('del')) return;
+        openDetail(r.id);
+      });
+      card.querySelector('.del').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        askConfirm('라운드 삭제', `${fmtDate(r.date)} · ${r.courseName} 기록을 삭제할까요?`, ()=>{
+          rounds = rounds.filter(x=>x.id !== r.id);
+          saveRounds(rounds);
+          renderHome();
+          showToast('삭제되었습니다');
+        });
+      });
+      list.appendChild(card);
+    });
+  }
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /* ---------------- SETUP screen ---------------- */
+  let setupPars = new Array(18).fill(4);
+
+  function renderParGrids(){
+    const front = document.getElementById('grid-front9');
+    const back = document.getElementById('grid-back9');
+    front.innerHTML = '';
+    back.innerHTML = '';
+    for(let i=0;i<18;i++){
+      const cell = document.createElement('div');
+      cell.className = 'hole-par-cell';
+      cell.innerHTML = `
+        <div class="hnum">HOLE ${i+1}</div>
+        <div class="pval" id="par-val-${i}">${setupPars[i]}</div>
+        <div class="par-steps">
+          <button class="par-step-btn" data-i="${i}" data-d="-1">－</button>
+          <button class="par-step-btn" data-i="${i}" data-d="1">＋</button>
+        </div>`;
+      (i < 9 ? front : back).appendChild(cell);
+    }
+    document.querySelectorAll('.par-step-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.dataset.i,10);
+        const d = parseInt(btn.dataset.d,10);
+        let v = setupPars[i] + d;
+        v = Math.max(3, Math.min(6, v));
+        setupPars[i] = v;
+        document.getElementById('par-val-'+i).textContent = v;
+      });
+    });
+  }
+
+  function openSetup(){
+    document.getElementById('input-course').value = '';
+    document.getElementById('input-date').value = todayISO();
+    setupPars = new Array(18).fill(4);
+    renderParGrids();
+    showScreen('screen-setup');
+  }
+
+  document.getElementById('btn-new-round').addEventListener('click', openSetup);
+  document.getElementById('btn-setup-back').addEventListener('click', ()=> showScreen('screen-home'));
+  document.getElementById('btn-preset-72').addEventListener('click', ()=>{
+    // Standard-ish 72 pattern: mostly par4, four par3, four par5
+    setupPars = [4,3,5,4,4,3,4,5,4, 4,3,5,4,4,3,4,5,4];
+    renderParGrids();
+  });
+
+  document.getElementById('btn-start-round').addEventListener('click', ()=>{
+    const course = document.getElementById('input-course').value.trim();
+    const date = document.getElementById('input-date').value || todayISO();
+    if(!course){
+      showToast('골프장 이름을 입력해주세요');
+      return;
+    }
+    const newRound = {
+      id: uid(),
+      courseName: course,
+      date: date,
+      pars: [...setupPars],
+      scores: new Array(18).fill(0)
+    };
+    rounds.push(newRound);
+    saveRounds(rounds);
+    openPlay(newRound.id);
+  });
+
+  /* ---------------- PLAY screen ---------------- */
+  let activeRoundId = null;
+  let currentHole = 0;
+
+  function getActiveRound(){
+    return rounds.find(r=>r.id === activeRoundId);
+  }
+
+  function openPlay(id){
+    activeRoundId = id;
+    const r = getActiveRound();
+    currentHole = 0;
+    // jump to first unentered hole if resuming
+    const firstEmpty = r.scores.findIndex(s => !s || s === 0);
+    if(firstEmpty !== -1) currentHole = firstEmpty;
+    document.getElementById('play-course').textContent = r.courseName;
+    document.getElementById('play-date').textContent = fmtDate(r.date);
+    renderHoleStrip();
+    renderPlayHole();
+    renderPlaySummary();
+    showScreen('screen-play');
+  }
+
+  function renderHoleStrip(){
+    const r = getActiveRound();
+    const strip = document.getElementById('hole-strip');
+    strip.innerHTML = '';
+    for(let i=0;i<18;i++){
+      const chip = document.createElement('div');
+      const sc = r.scores[i];
+      let cls = 'hole-chip';
+      if(i === currentHole) cls += ' current';
+      else if(sc && sc > 0){
+        const diff = sc - r.pars[i];
+        cls += ' done ' + toParClass(diff);
+      }
+      chip.className = cls;
+      chip.innerHTML = `<div class="hn">${i+1}</div><div class="hs">${sc && sc>0 ? sc : '-'}</div>`;
+      chip.addEventListener('click', ()=>{
+        currentHole = i;
+        renderHoleStrip();
+        renderPlayHole();
+      });
+      strip.appendChild(chip);
+    }
+    // auto scroll current into view
+    requestAnimationFrame(()=>{
+      const cur = strip.querySelector('.current');
+      if(cur) cur.scrollIntoView({inline:'center', block:'nearest'});
+    });
+  }
+
+  function renderPlayHole(){
+    const r = getActiveRound();
+    document.getElementById('play-holenum').textContent = 'HOLE ' + (currentHole+1);
+    document.getElementById('play-holepar').textContent = 'PAR ' + r.pars[currentHole];
+    const sc = r.scores[currentHole] || 0;
+    document.getElementById('stroke-val').textContent = sc;
+    const relEl = document.getElementById('stroke-rel');
+    if(sc === 0){
+      relEl.textContent = '입력 전';
+    } else {
+      const diff = sc - r.pars[currentHole];
+      relEl.textContent = toParLabel(diff) + ' (' + parName(diff, sc) + ')';
+    }
+    document.getElementById('btn-hole-prev').disabled = currentHole === 0;
+    document.getElementById('btn-hole-next').textContent = currentHole === 17 ? '완료 ›' : '다음 홀 ›';
+  }
+
+  function parName(diff, sc){
+    if(sc === 1) return '홀인원';
+    if(diff <= -3) return '알바트로스';
+    if(diff === -2) return '이글';
+    if(diff === -1) return '버디';
+    if(diff === 0) return '파';
+    if(diff === 1) return '보기';
+    if(diff === 2) return '더블보기';
+    if(diff === 3) return '트리플보기';
+    return diff + '오버';
+  }
+
+  function renderPlaySummary(){
+    const r = getActiveRound();
+    const entered = r.scores.filter(s=>s>0);
+    const total = entered.reduce((a,b)=>a+b,0);
+    const parSoFar = r.pars.reduce((sum,p,i)=> r.scores[i]>0 ? sum+p : sum, 0);
+    const diff = total - parSoFar;
+    document.getElementById('play-total').textContent = total;
+    document.getElementById('play-topar').textContent = entered.length ? toParLabel(diff) : 'E';
+    document.getElementById('play-thru').textContent = entered.length + '/18';
+  }
+
+  function setStroke(delta){
+    const r = getActiveRound();
+    let sc = r.scores[currentHole] || 0;
+    if(sc === 0 && delta > 0){
+      sc = Math.max(1, r.pars[currentHole] + delta - r.pars[currentHole]); // starts logically
+    }
+    sc = sc + delta;
+    if(sc < 0) sc = 0;
+    if(sc > 15) sc = 15;
+    r.scores[currentHole] = sc;
+    saveRounds(rounds);
+    renderPlayHole();
+    renderHoleStrip();
+    renderPlaySummary();
+  }
+
+  document.getElementById('btn-stroke-plus').addEventListener('click', ()=>{
+    const r = getActiveRound();
+    if(!r.scores[currentHole] || r.scores[currentHole] === 0){
+      r.scores[currentHole] = 1;
+    } else {
+      r.scores[currentHole] += 1;
+    }
+    if(r.scores[currentHole] > 15) r.scores[currentHole] = 15;
+    saveRounds(rounds);
+    renderPlayHole(); renderHoleStrip(); renderPlaySummary();
+  });
+  document.getElementById('btn-stroke-minus').addEventListener('click', ()=>{
+    const r = getActiveRound();
+    let sc = r.scores[currentHole] || 0;
+    sc -= 1;
+    if(sc < 0) sc = 0;
+    r.scores[currentHole] = sc;
+    saveRounds(rounds);
+    renderPlayHole(); renderHoleStrip(); renderPlaySummary();
+  });
+
+  document.getElementById('btn-hole-prev').addEventListener('click', ()=>{
+    if(currentHole > 0){ currentHole--; renderHoleStrip(); renderPlayHole(); }
+  });
+  document.getElementById('btn-hole-next').addEventListener('click', ()=>{
+    if(currentHole < 17){ currentHole++; renderHoleStrip(); renderPlayHole(); }
+    else {
+      // last hole -> prompt finish
+      document.getElementById('btn-finish-round').click();
+    }
+  });
+
+  document.getElementById('btn-play-close').addEventListener('click', ()=>{
+    askConfirm('라운드 종료', '지금까지 입력한 스코어는 저장되어 있어요. 홈으로 돌아갈까요?', ()=>{
+      showScreen('screen-home');
+      renderHome();
+    });
+  });
+
+  document.getElementById('btn-finish-round').addEventListener('click', ()=>{
+    const r = getActiveRound();
+    const missing = r.scores.filter(s=>!s || s===0).length;
+    const msg = missing > 0
+      ? `${missing}개 홀이 아직 입력되지 않았어요. 그래도 저장할까요?`
+      : '라운드를 저장하고 홈으로 이동합니다.';
+    askConfirm('라운드 종료 및 저장', msg, ()=>{
+      showScreen('screen-home');
+      renderHome();
+      showToast('라운드가 저장되었습니다');
+    });
+  });
+
+  /* ---------------- DETAIL screen ---------------- */
+  let detailRoundId = null;
+
+  function openDetail(id){
+    detailRoundId = id;
+    const r = rounds.find(x=>x.id===id);
+    document.getElementById('detail-title').textContent = r.courseName;
+    const total = r.scores.reduce((a,b)=>a+(b||0),0);
+    const parSum = r.pars.reduce((a,b)=>a+(b||0),0);
+    const diff = total - parSum;
+    document.getElementById('detail-total').textContent = total;
+    document.getElementById('detail-topar').textContent = toParLabel(diff);
+    document.getElementById('detail-parsum').textContent = parSum;
+
+    const table = document.getElementById('detail-table');
+    table.innerHTML = '';
+    [[0,9,'전반 (OUT)'],[9,18,'후반 (IN)']].forEach(([start,end,label])=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'detail-nine';
+      let rowsHtml = `<div class="detail-row head"><div>홀</div><div>${label}</div><div style="text-align:right">파</div><div style="text-align:right">타수</div></div>`;
+      let subTotal = 0, subPar = 0;
+      for(let i=start;i<end;i++){
+        const sc = r.scores[i] || 0;
+        const par = r.pars[i];
+        subTotal += sc; subPar += par;
+        const diffH = sc - par;
+        rowsHtml += `<div class="detail-row">
+          <div class="hc">${i+1}</div>
+          <div>${sc>0 ? parName(diffH, sc) : '-'}</div>
+          <div class="pc">${par}</div>
+          <div class="sc">${sc>0?sc:'-'}</div>
+        </div>`;
+      }
+      rowsHtml += `<div class="detail-row" style="background:var(--cream-dim); font-weight:800;">
+        <div></div><div>소계</div><div class="pc">${subPar}</div><div class="sc">${subTotal||'-'}</div>
+      </div>`;
+      wrap.innerHTML = rowsHtml;
+      table.appendChild(wrap);
+    });
+
+    showScreen('screen-detail');
+  }
+
+  document.getElementById('btn-detail-back').addEventListener('click', ()=>{
+    showScreen('screen-home');
+    renderHome();
+  });
+  document.getElementById('btn-detail-del').addEventListener('click', ()=>{
+    const r = rounds.find(x=>x.id===detailRoundId);
+    askConfirm('라운드 삭제', `${r.courseName} 기록을 삭제할까요?`, ()=>{
+      rounds = rounds.filter(x=>x.id !== detailRoundId);
+      saveRounds(rounds);
+      showScreen('screen-home');
+      renderHome();
+      showToast('삭제되었습니다');
+    });
+  });
+
+  /* also allow resuming an unfinished round from detail? keep simple: view only from home list */
+
+  /* ---------------- init ---------------- */
+  renderHome();
+})();
+</script>
+</body>
+</html>
