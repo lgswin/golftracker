@@ -151,18 +151,27 @@
     font-weight:600;
   }
   .text-input:focus{ outline:none; border-color:var(--fairway-bright); }
-  input[type="date"].text-input{
+
+  .date-select-row{ display:flex; gap:8px; }
+  .date-select-wrap{ position:relative; flex:1; min-width:0; }
+  .date-select{
     width:100%;
-    max-width:100%;
-    min-width:0;
     box-sizing:border-box;
+    padding:14px 26px 14px 12px;
+    font-size:16px;
+    font-weight:700;
+    border-radius:14px;
+    border:2px solid var(--line);
+    background:#fff;
+    color:var(--ink);
     -webkit-appearance:none;
     appearance:none;
-    display:block;
+    text-align:center;
   }
-  input[type="date"].text-input::-webkit-date-and-time-value{
-    text-align:left;
-    min-width:0;
+  .date-select:focus{ outline:none; border-color:var(--fairway-bright); }
+  .date-caret{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    pointer-events:none; color:var(--ink-soft); font-size:11px;
   }
 
   .mode-toggle{ display:flex; gap:10px; }
@@ -413,6 +422,9 @@
     .stroke-btn{ height:88px; font-size:34px; }
     .round-card .total{ font-size:26px; }
     .brand{ font-size:19px !important; }
+    .date-select-row{ gap:6px; }
+    .date-select{ padding:12px 20px 12px 8px; font-size:16px; }
+    .date-caret{ right:6px; }
   }
 
   /* Landscape phones: stack play controls tighter, allow scroll fallback */
@@ -457,7 +469,20 @@
       <input class="text-input" id="input-course" placeholder="예) 남서울cc" maxlength="30">
 
       <div class="field-label" style="margin-top:26px;">플레이 날짜</div>
-      <input class="text-input" id="input-date" type="date">
+      <div class="date-select-row">
+        <div class="date-select-wrap">
+          <select class="date-select" id="select-year"></select>
+          <span class="date-caret">▾</span>
+        </div>
+        <div class="date-select-wrap">
+          <select class="date-select" id="select-month"></select>
+          <span class="date-caret">▾</span>
+        </div>
+        <div class="date-select-wrap">
+          <select class="date-select" id="select-day"></select>
+          <span class="date-caret">▾</span>
+        </div>
+      </div>
 
       <div class="field-label" style="margin-top:26px;">타수 계산 방식</div>
       <div class="mode-toggle" id="mode-toggle">
@@ -588,6 +613,63 @@
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
+
+  /* ---------------- custom date select (year/month/day) ---------------- */
+  function daysInMonth(year, month){
+    return new Date(year, month, 0).getDate();
+  }
+  function populateDaySelect(year, month, preferredDay){
+    const daySel = document.getElementById('select-day');
+    const dim = daysInMonth(year, month);
+    const current = preferredDay || parseInt(daySel.value, 10) || 1;
+    const keep = Math.min(current, dim);
+    daySel.innerHTML = '';
+    for(let dd = 1; dd <= dim; dd++){
+      const opt = document.createElement('option');
+      opt.value = dd;
+      opt.textContent = dd + '일';
+      if(dd === keep) opt.selected = true;
+      daySel.appendChild(opt);
+    }
+  }
+  function populateDateSelects(iso){
+    const [y, m, d] = iso.split('-').map(Number);
+    const yearSel = document.getElementById('select-year');
+    const monthSel = document.getElementById('select-month');
+    const curYear = new Date().getFullYear();
+    yearSel.innerHTML = '';
+    for(let yy = curYear - 5; yy <= curYear + 1; yy++){
+      const opt = document.createElement('option');
+      opt.value = yy;
+      opt.textContent = yy + '년';
+      if(yy === y) opt.selected = true;
+      yearSel.appendChild(opt);
+    }
+    monthSel.innerHTML = '';
+    for(let mm = 1; mm <= 12; mm++){
+      const opt = document.createElement('option');
+      opt.value = mm;
+      opt.textContent = mm + '월';
+      if(mm === m) opt.selected = true;
+      monthSel.appendChild(opt);
+    }
+    populateDaySelect(y, m, d);
+  }
+  function getSelectedDateISO(){
+    const y = document.getElementById('select-year').value;
+    const m = String(document.getElementById('select-month').value).padStart(2, '0');
+    const d = String(document.getElementById('select-day').value).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  function onYearOrMonthChange(){
+    const y = parseInt(document.getElementById('select-year').value, 10);
+    const m = parseInt(document.getElementById('select-month').value, 10);
+    const d = parseInt(document.getElementById('select-day').value, 10);
+    populateDaySelect(y, m, d);
+  }
+  document.getElementById('select-year').addEventListener('change', onYearOrMonthChange);
+  document.getElementById('select-month').addEventListener('change', onYearOrMonthChange);
+
   function toParLabel(diff){
     if(diff === 0) return 'E';
     return diff > 0 ? ('+' + diff) : String(diff);
@@ -740,7 +822,7 @@
 
   function openSetup(){
     document.getElementById('input-course').value = '';
-    document.getElementById('input-date').value = todayISO();
+    populateDateSelects(todayISO());
     setupPars = new Array(18).fill(4);
     setupScoreMode = 'par';
     renderModeToggle();
@@ -758,7 +840,7 @@
 
   document.getElementById('btn-start-round').addEventListener('click', ()=>{
     const course = document.getElementById('input-course').value.trim();
-    const date = document.getElementById('input-date').value || todayISO();
+    const date = getSelectedDateISO();
     if(!course){
       showToast('골프장 이름을 입력해주세요');
       return;
