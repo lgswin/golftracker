@@ -408,6 +408,11 @@
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 20px 8px;
   }
+  .sheet-header .icon-btn{
+    background:var(--cream-dim);
+    color:var(--ink);
+  }
+  .sheet-header .icon-btn:active{ background:var(--fairway-bright); color:#fff; }
   .sheet-title{ font-size:17px; font-weight:800; color:var(--fairway-deep); }
   .sheet-body{
     overflow-y:auto;
@@ -959,6 +964,9 @@
   }
   document.getElementById('btn-load-template').addEventListener('click', openTemplateOverlay);
   document.getElementById('btn-template-close').addEventListener('click', closeTemplateOverlay);
+  document.getElementById('template-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'template-overlay') closeTemplateOverlay();
+  });
 
   document.getElementById('btn-save-template').addEventListener('click', ()=>{
     const name = document.getElementById('input-course').value.trim();
