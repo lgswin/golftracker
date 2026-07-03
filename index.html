@@ -410,15 +410,16 @@
     padding:16px 20px 8px;
   }
   .sheet-close-center{
-    background:var(--fairway-deep);
-    color:var(--cream);
+    background:var(--cream-dim);
+    color:var(--ink-soft);
     border:none;
-    padding:9px 22px;
-    border-radius:22px;
-    font-size:14px;
-    font-weight:800;
+    width:34px; height:34px;
+    border-radius:50%;
+    font-size:15px;
+    font-weight:700;
+    display:flex; align-items:center; justify-content:center;
   }
-  .sheet-close-center:active{ background:var(--fairway); }
+  .sheet-close-center:active{ background:var(--fairway-bright); color:#fff; }
   .sheet-title{ font-size:17px; font-weight:800; color:var(--fairway-deep); }
   .sheet-body{
     overflow-y:auto;
@@ -641,7 +642,7 @@
 <div class="sheet-overlay" id="template-overlay">
   <div class="sheet">
     <div class="sheet-header">
-      <button class="sheet-close-center" id="btn-template-close">✕ 닫기</button>
+      <button class="sheet-close-center" id="btn-template-close">✕</button>
       <div class="sheet-title">저장된 골프장</div>
     </div>
     <div class="sheet-body" id="template-list"></div>
