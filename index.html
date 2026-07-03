@@ -152,6 +152,22 @@
   }
   .text-input:focus{ outline:none; border-color:var(--fairway-bright); }
 
+  .mode-toggle{ display:flex; gap:10px; }
+  .mode-btn{
+    flex:1;
+    background:#fff;
+    border:2px solid var(--line);
+    border-radius:14px;
+    padding:12px 12px;
+    text-align:left;
+  }
+  .mode-btn.active{
+    border-color:var(--fairway-bright);
+    box-shadow:0 0 0 3px rgba(74,139,92,0.15);
+  }
+  .mode-btn-title{ font-size:14px; font-weight:800; color:var(--fairway-deep); }
+  .mode-btn-desc{ font-size:11px; color:var(--ink-soft); margin-top:4px; line-height:1.35; }
+
   .par-grid-title{ display:flex; justify-content:space-between; align-items:center; }
   .par-preset{
     font-size:12px; font-weight:700; color:var(--fairway);
@@ -260,10 +276,10 @@
   .stroke-buttons-row{ display:flex; gap:16px; width:100%; }
   .stroke-btn{
     flex:1;
-    height:84px;
-    border-radius:22px;
+    height:120px;
+    border-radius:26px;
     border:none;
-    font-size:36px;
+    font-size:44px;
     font-weight:800;
     display:flex; align-items:center; justify-content:center;
     box-shadow:var(--shadow);
@@ -271,6 +287,8 @@
   .stroke-btn.minus{ background:#fff; color:var(--ink-soft); border:2px solid var(--line); }
   .stroke-btn.plus{ background:var(--flag-red); color:#fff; }
   .stroke-btn:active{ transform:scale(0.94); }
+  .stroke-btn:disabled{ opacity:0.35; box-shadow:none; }
+  .stroke-btn:disabled:active{ transform:none; }
   .stroke-display{
     width:200px; height:200px;
     border-radius:50%;
@@ -280,6 +298,7 @@
   }
   .stroke-display .val{ font-size:84px; font-weight:800; color:var(--fairway-deep); line-height:1; }
   .stroke-display .rel{ font-size:15px; font-weight:700; margin-top:6px; color:var(--ink-soft); }
+  .stroke-display .rel.rel-cap{ color:var(--flag-red); }
 
   .nav-row{
     display:flex; gap:12px; width:100%; max-width:360px;
@@ -360,7 +379,7 @@
     .stroke-display{ width:150px; height:150px; box-shadow:0 0 0 8px var(--cream-dim), var(--shadow); }
     .stroke-display .val{ font-size:58px; }
     .stroke-buttons-row{ gap:12px; }
-    .stroke-btn{ height:64px; font-size:28px; border-radius:18px; }
+    .stroke-btn{ height:88px; font-size:34px; border-radius:20px; }
     .hole-title .big{ font-size:13px; }
     .nav-btn{ padding:12px; font-size:14px; }
     .setup-body{ padding:14px 18px 24px; }
@@ -378,7 +397,7 @@
     .stroke-wrap{ gap:12px; }
     .stroke-display{ width:160px; height:160px; }
     .stroke-display .val{ font-size:60px; }
-    .stroke-btn{ height:64px; font-size:28px; }
+    .stroke-btn{ height:88px; font-size:34px; }
     .round-card .total{ font-size:26px; }
     .brand{ font-size:19px !important; }
   }
@@ -389,7 +408,7 @@
     .stroke-wrap{ gap:12px; max-width:320px; }
     .stroke-display{ width:120px; height:120px; }
     .stroke-display .val{ font-size:46px; }
-    .stroke-btn{ height:56px; font-size:24px; border-radius:16px; }
+    .stroke-btn{ height:72px; font-size:28px; border-radius:18px; }
     .nav-row{ max-width:420px; }
   }
 
@@ -426,6 +445,18 @@
 
       <div class="field-label" style="margin-top:26px;">플레이 날짜</div>
       <input class="text-input" id="input-date" type="date">
+
+      <div class="field-label" style="margin-top:26px;">타수 계산 방식</div>
+      <div class="mode-toggle" id="mode-toggle">
+        <button class="mode-btn active" data-mode="par" id="mode-btn-par">
+          <div class="mode-btn-title">파 기준 +/－</div>
+          <div class="mode-btn-desc">기본값 파, 버튼으로 가감 (기본)</div>
+        </button>
+        <button class="mode-btn" data-mode="zero" id="mode-btn-zero">
+          <div class="mode-btn-title">0부터 카운트</div>
+          <div class="mode-btn-desc">0에서 시작해 타수 누적</div>
+        </button>
+      </div>
 
       <div class="field-label par-grid-title" style="margin-top:26px;">
         <span>홀별 파(PAR)</span>
@@ -552,6 +583,21 @@
     if(diff === 0) return 'even';
     return diff > 0 ? 'over' : 'under';
   }
+  function roundStats(r){
+    const mode = r.scoreMode || 'par';
+    let total, parSum, hasAny;
+    if(mode === 'zero'){
+      const entered = r.scores.filter(s=>s>0);
+      total = entered.reduce((a,b)=>a+b,0);
+      parSum = r.pars.reduce((sum,p,i)=> r.scores[i]>0 ? sum+p : sum, 0);
+      hasAny = entered.length > 0;
+    } else {
+      total = r.scores.reduce((a,b)=>a+(b||0),0);
+      parSum = r.pars.reduce((a,b)=>a+(b||0),0);
+      hasAny = true;
+    }
+    return { total, parSum, diff: total - parSum, hasAny };
+  }
   function showToast(msg){
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -600,9 +646,7 @@
     }
     const sorted = [...rounds].sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
     sorted.forEach(r=>{
-      const total = r.scores.reduce((a,b)=>a+(b||0),0);
-      const parSum = r.pars.reduce((a,b)=>a+(b||0),0);
-      const diff = total - parSum;
+      const { total, diff, hasAny } = roundStats(r);
       const card = document.createElement('div');
       card.className = 'round-card';
       card.innerHTML = `
@@ -611,7 +655,7 @@
         <div class="course">${escapeHtml(r.courseName)}</div>
         <div class="stats">
           <div class="total">${total}</div>
-          <div class="to-par ${toParClass(diff)}">${toParLabel(diff)}</div>
+          <div class="to-par ${toParClass(diff)}">${hasAny ? toParLabel(diff) : 'E'}</div>
         </div>`;
       card.addEventListener('click', (e)=>{
         if(e.target.classList.contains('del')) return;
@@ -637,6 +681,20 @@
 
   /* ---------------- SETUP screen ---------------- */
   let setupPars = new Array(18).fill(4);
+  let setupScoreMode = 'par';
+
+  function renderModeToggle(){
+    document.getElementById('mode-btn-par').classList.toggle('active', setupScoreMode === 'par');
+    document.getElementById('mode-btn-zero').classList.toggle('active', setupScoreMode === 'zero');
+  }
+  document.getElementById('mode-btn-par').addEventListener('click', ()=>{
+    setupScoreMode = 'par';
+    renderModeToggle();
+  });
+  document.getElementById('mode-btn-zero').addEventListener('click', ()=>{
+    setupScoreMode = 'zero';
+    renderModeToggle();
+  });
 
   function renderParGrids(){
     const front = document.getElementById('grid-front9');
@@ -671,6 +729,8 @@
     document.getElementById('input-course').value = '';
     document.getElementById('input-date').value = todayISO();
     setupPars = new Array(18).fill(4);
+    setupScoreMode = 'par';
+    renderModeToggle();
     renderParGrids();
     showScreen('screen-setup');
   }
@@ -695,7 +755,8 @@
       courseName: course,
       date: date,
       pars: [...setupPars],
-      scores: [...setupPars]
+      scoreMode: setupScoreMode,
+      scores: setupScoreMode === 'zero' ? new Array(18).fill(0) : [...setupPars]
     };
     rounds.push(newRound);
     saveRounds(rounds);
@@ -724,19 +785,21 @@
 
   function renderHoleStrip(){
     const r = getActiveRound();
+    const mode = r.scoreMode || 'par';
     const strip = document.getElementById('hole-strip');
     strip.innerHTML = '';
     for(let i=0;i<18;i++){
       const chip = document.createElement('div');
       const sc = r.scores[i];
+      const untouched = mode === 'zero' && sc === 0;
       let cls = 'hole-chip';
       if(i === currentHole) cls += ' current';
-      else {
+      else if(!untouched){
         const diff = sc - r.pars[i];
         cls += ' done ' + toParClass(diff);
       }
       chip.className = cls;
-      chip.innerHTML = `<div class="hn">${i+1}</div><div class="hs">${sc}</div>`;
+      chip.innerHTML = `<div class="hn">${i+1}</div><div class="hs">${untouched ? '-' : sc}</div>`;
       chip.addEventListener('click', ()=>{
         currentHole = i;
         renderHoleStrip();
@@ -753,18 +816,28 @@
 
   function renderPlayHole(){
     const r = getActiveRound();
+    const mode = r.scoreMode || 'par';
+    const par = r.pars[currentHole];
     document.getElementById('play-holenum').textContent = 'HOLE ' + (currentHole+1);
-    document.getElementById('play-holepar').textContent = 'PAR ' + r.pars[currentHole];
+    document.getElementById('play-holepar').textContent = 'PAR ' + par;
     const sc = r.scores[currentHole];
     document.getElementById('stroke-val').textContent = sc;
     const relEl = document.getElementById('stroke-rel');
-    const diff = sc - r.pars[currentHole];
-    relEl.textContent = toParLabel(diff) + ' · ' + parName(diff, sc);
+    if(mode === 'zero' && sc === 0){
+      relEl.textContent = '입력 전';
+      relEl.classList.remove('rel-cap');
+    } else {
+      const diff = sc - par;
+      relEl.textContent = toParLabel(diff) + ' · ' + parName(diff, sc, par);
+      relEl.classList.toggle('rel-cap', sc >= par * 2);
+    }
     document.getElementById('btn-hole-prev').disabled = currentHole === 0;
     document.getElementById('btn-hole-next').textContent = currentHole === 17 ? '완료 ›' : '다음 홀 ›';
+    document.getElementById('btn-stroke-plus').disabled = sc >= par * 2;
   }
 
-  function parName(diff, sc){
+  function parName(diff, sc, par){
+    if(par && sc === par * 2) return '양파';
     if(sc === 1) return '홀인원';
     if(diff <= -3) return '알바트로스';
     if(diff === -2) return '이글';
@@ -778,19 +851,21 @@
 
   function renderPlaySummary(){
     const r = getActiveRound();
-    const total = r.scores.reduce((a,b)=>a+b,0);
-    const parSum = r.pars.reduce((a,b)=>a+b,0);
-    const diff = total - parSum;
+    const { total, diff, hasAny } = roundStats(r);
     document.getElementById('play-total').textContent = total;
-    document.getElementById('play-topar').textContent = toParLabel(diff);
+    document.getElementById('play-topar').textContent = hasAny ? toParLabel(diff) : 'E';
     document.getElementById('play-thru').textContent = (currentHole+1) + '/18';
   }
 
   function setStroke(delta){
     const r = getActiveRound();
+    const mode = r.scoreMode || 'par';
+    const par = r.pars[currentHole];
+    const minBound = mode === 'zero' ? 0 : 1;
+    const maxBound = par * 2;
     let sc = r.scores[currentHole] + delta;
-    if(sc < 1) sc = 1;
-    if(sc > 15) sc = 15;
+    if(sc < minBound) sc = minBound;
+    if(sc > maxBound) sc = maxBound;
     r.scores[currentHole] = sc;
     saveRounds(rounds);
     renderPlayHole();
@@ -820,7 +895,14 @@
   });
 
   document.getElementById('btn-finish-round').addEventListener('click', ()=>{
-    askConfirm('라운드 종료 및 저장', '라운드를 저장하고 홈으로 이동합니다.', ()=>{
+    const r = getActiveRound();
+    const mode = r.scoreMode || 'par';
+    let msg = '라운드를 저장하고 홈으로 이동합니다.';
+    if(mode === 'zero'){
+      const missing = r.scores.filter(s=>!s || s===0).length;
+      if(missing > 0) msg = `${missing}개 홀이 아직 입력되지 않았어요. 그래도 저장할까요?`;
+    }
+    askConfirm('라운드 종료 및 저장', msg, ()=>{
       showScreen('screen-home');
       renderHome();
       showToast('라운드가 저장되었습니다');
@@ -834,12 +916,11 @@
     detailRoundId = id;
     const r = rounds.find(x=>x.id===id);
     document.getElementById('detail-title').textContent = r.courseName;
-    const total = r.scores.reduce((a,b)=>a+(b||0),0);
-    const parSum = r.pars.reduce((a,b)=>a+(b||0),0);
-    const diff = total - parSum;
+    const { total, diff, hasAny } = roundStats(r);
+    const courseParTotal = r.pars.reduce((a,b)=>a+(b||0),0);
     document.getElementById('detail-total').textContent = total;
-    document.getElementById('detail-topar').textContent = toParLabel(diff);
-    document.getElementById('detail-parsum').textContent = parSum;
+    document.getElementById('detail-topar').textContent = hasAny ? toParLabel(diff) : 'E';
+    document.getElementById('detail-parsum').textContent = courseParTotal;
 
     const table = document.getElementById('detail-table');
     table.innerHTML = '';
@@ -855,7 +936,7 @@
         const diffH = sc - par;
         rowsHtml += `<div class="detail-row">
           <div class="hc">${i+1}</div>
-          <div>${sc>0 ? parName(diffH, sc) : '-'}</div>
+          <div>${sc>0 ? parName(diffH, sc, par) : '-'}</div>
           <div class="pc">${par}</div>
           <div class="sc">${sc>0?sc:'-'}</div>
         </div>`;
