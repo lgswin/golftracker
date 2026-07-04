@@ -25,7 +25,13 @@
     --shadow: 0 8px 24px rgba(24,32,24,0.14);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{height:100%; overflow-x:hidden;}
+  html,body{
+    height:100%;
+    width:100%;
+    overflow:hidden;
+    position:fixed;
+    overscroll-behavior:none;
+  }
   body{
     margin:0;
     background:var(--cream);
@@ -85,6 +91,8 @@
     min-height:0;
     padding:16px 16px 100px;
     overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
   }
   .empty-state{
     margin-top:60px;
@@ -144,7 +152,7 @@
   .fab:active{ transform:scale(0.97); }
 
   /* ---------- Setup screen ---------- */
-  .setup-body{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding:20px 20px 40px; }
+  .setup-body{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:20px 20px 40px; }
   .field-label{
     font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
     color:var(--ink-soft); margin:22px 0 8px;
@@ -299,6 +307,8 @@
     gap:18px;
     overflow-y:auto;
     min-height:0;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
   }
   .hole-title{ text-align:center; }
   .hole-title .big{ font-size:15px; font-weight:800; letter-spacing:2px; color:var(--ink-soft); text-transform:uppercase; }
@@ -358,6 +368,7 @@
     flex:1;
     min-height:0;
     overflow:hidden;
+    touch-action:none;
     display:flex;
     gap:10px;
   }
