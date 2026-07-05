@@ -239,6 +239,22 @@
   }
   .par-step-btn:active{ background:var(--fairway-bright); color:#fff; }
 
+  .nine-block{ margin-top:18px; }
+  .nine-block-head{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:8px; margin-bottom:8px;
+  }
+  .nine-block-title{
+    font-size:12px; font-weight:800; color:var(--gold); letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .nine-block-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .nine-block-actions .par-preset{ padding:5px 9px; font-size:11px; }
+  .nine-block-source{
+    font-size:11px; color:var(--fairway); font-weight:700;
+    margin:-4px 0 8px;
+  }
+
   .primary-btn{
     width:100%;
     padding:16px;
@@ -266,6 +282,18 @@
   }
   .round-header .rh-top{ display:flex; justify-content:space-between; align-items:flex-start; }
   .round-header .rh-course{ font-size:18px; font-weight:800; }
+  .rh-course-row{ display:flex; align-items:center; gap:6px; }
+  .rename-btn{
+    background:rgba(247,243,232,0.14);
+    border:none;
+    color:var(--cream);
+    width:24px; height:24px;
+    border-radius:8px;
+    font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .rename-btn:active{ background:rgba(247,243,232,0.28); }
   .round-header .rh-date{ font-size:12px; color:rgba(247,243,232,0.65); margin-top:2px; }
   .rh-summary{ display:flex; gap:18px; margin-top:12px; }
   .rh-stat{ }
@@ -553,7 +581,7 @@
         <span>골프장 이름</span>
         <button class="par-preset" id="btn-load-template">불러오기</button>
       </div>
-      <input class="text-input" id="input-course" placeholder="예) 남서울cc" maxlength="30">
+      <input class="text-input" id="input-course" placeholder="예) 남서울cc" maxlength="50">
 
       <div class="field-label" style="margin-top:26px;">플레이 날짜</div>
       <div class="date-select-row">
@@ -585,16 +613,15 @@
 
       <div class="field-label par-grid-title" style="margin-top:26px;">
         <span>홀별 파(PAR)</span>
-        <button class="par-preset" id="btn-preset-72">기본 72 적용</button>
+        <button class="par-preset" id="btn-preset-72">기본 파 적용</button>
       </div>
+      <p style="font-size:12px; color:var(--ink-soft); margin:0 0 4px; line-height:1.5;">9홀 코스를 조합해서 만들 수 있어요. 각 구간마다 저장된 9홀 코스를 불러오거나, 새로 입력한 9홀을 저장해둘 수 있습니다.</p>
 
-      <div class="nine-label">전반 (1–9)</div>
-      <div class="hole-par-grid" id="grid-front9"></div>
+      <div id="nine-blocks"></div>
 
-      <div class="nine-label">후반 (10–18)</div>
-      <div class="hole-par-grid" id="grid-back9"></div>
+      <button class="ghost-btn" id="btn-toggle-27" style="color:var(--fairway); font-weight:800;">+ 9홀 추가해서 27홀로</button>
 
-      <button class="ghost-btn" id="btn-save-template" style="color:var(--fairway); font-weight:800; margin-top:18px;">💾 이 골프장 정보 저장해두기</button>
+      <button class="ghost-btn" id="btn-save-template" style="color:var(--fairway); font-weight:800; margin-top:6px;">💾 이 골프장 정보 저장해두기</button>
       <button class="primary-btn" id="btn-start-round">라운드 시작</button>
     </div>
   </div>
@@ -604,7 +631,10 @@
     <div class="round-header">
       <div class="rh-top">
         <div>
-          <div class="rh-course" id="play-course">-</div>
+          <div class="rh-course-row">
+            <div class="rh-course" id="play-course">-</div>
+            <button class="rename-btn" id="btn-rename-course">✎</button>
+          </div>
           <div class="rh-date" id="play-date">-</div>
         </div>
         <button class="icon-btn" id="btn-play-close">✕</button>
@@ -646,7 +676,10 @@
     <div class="topbar">
       <button class="icon-btn" id="btn-detail-back">‹</button>
       <div class="brand" style="font-size:18px" id="detail-title">라운드 기록</div>
-      <button class="icon-btn" id="btn-detail-del">🗑</button>
+      <div style="display:flex; gap:8px;">
+        <button class="icon-btn" id="btn-detail-edit">✎</button>
+        <button class="icon-btn" id="btn-detail-del">🗑</button>
+      </div>
     </div>
     <div class="round-header" style="border-radius:0;">
       <div class="rh-summary">
@@ -683,11 +716,51 @@
   </div>
 </div>
 
+<div class="sheet-overlay" id="rename-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="sheet-close-center" id="btn-rename-close">✕</button>
+      <div class="sheet-title">골프장 이름 수정</div>
+    </div>
+    <div class="sheet-body">
+      <input class="text-input" id="input-rename-course" placeholder="골프장 이름" maxlength="50">
+      <button class="primary-btn" id="btn-rename-save" style="margin-top:16px;">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="nine-picker-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="sheet-close-center" id="btn-nine-picker-close">✕</button>
+      <div class="sheet-title">저장된 9홀 코스</div>
+    </div>
+    <div class="sheet-body" id="nine-picker-list"></div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="nine-save-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="sheet-close-center" id="btn-nine-save-close">✕</button>
+      <div class="sheet-title">9홀 코스 저장</div>
+    </div>
+    <div class="sheet-body">
+      <div class="field-label" style="margin-top:0;">골프장 이름</div>
+      <input class="text-input" id="input-nine-save-course" placeholder="예) 남서울cc" maxlength="50">
+      <div class="field-label">코스 이름</div>
+      <input class="text-input" id="input-nine-save-name" placeholder="예) 동코스" maxlength="20">
+      <button class="primary-btn" id="btn-nine-save-confirm" style="margin-top:16px;">저장</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
   const STORAGE_KEY = "greencount_rounds_v1";
   const TEMPLATES_KEY = "greencount_templates_v1";
+  const NINE_TEMPLATES_KEY = "greencount_nine_templates_v1";
 
   /* ---------------- storage ---------------- */
   function loadRounds(){
@@ -711,6 +784,22 @@
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(t));
   }
   let templates = loadTemplates();
+
+  function loadNineTemplates(){
+    try{
+      const raw = localStorage.getItem(NINE_TEMPLATES_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveNineTemplates(t){
+    localStorage.setItem(NINE_TEMPLATES_KEY, JSON.stringify(t));
+  }
+  let nineTemplates = loadNineTemplates();
+  function chunk9(arr){
+    const out = [];
+    for(let i=0; i<arr.length; i+=9) out.push(arr.slice(i, i+9));
+    return out;
+  }
 
   /* ---------------- helpers ---------------- */
   function uid(){ return 'r_' + Date.now() + '_' + Math.floor(Math.random()*10000); }
@@ -891,8 +980,10 @@
   }
 
   /* ---------------- SETUP screen ---------------- */
-  let setupPars = new Array(18).fill(4);
+  function default9(){ return new Array(9).fill(4); }
+  let setupNines = [ {pars: default9()}, {pars: default9()} ]; // 2 blocks (18) or 3 blocks (27)
   let setupScoreMode = 'par';
+  const NINE_PATTERN = [4,3,5,4,4,3,4,5,4];
 
   function renderModeToggle(){
     document.getElementById('mode-btn-par').classList.toggle('active', setupScoreMode === 'par');
@@ -907,51 +998,193 @@
     renderModeToggle();
   });
 
-  function renderParGrids(){
-    const front = document.getElementById('grid-front9');
-    const back = document.getElementById('grid-back9');
-    front.innerHTML = '';
-    back.innerHTML = '';
-    for(let i=0;i<18;i++){
-      const cell = document.createElement('div');
-      cell.className = 'hole-par-cell';
-      cell.innerHTML = `
-        <div class="hnum">HOLE ${i+1}</div>
-        <div class="pval" id="par-val-${i}">${setupPars[i]}</div>
-        <div class="par-steps">
-          <button class="par-step-btn" data-i="${i}" data-d="-1">－</button>
-          <button class="par-step-btn" data-i="${i}" data-d="1">＋</button>
-        </div>`;
-      (i < 9 ? front : back).appendChild(cell);
-    }
-    document.querySelectorAll('.par-step-btn').forEach(btn=>{
+  function nineBlockTitle(idx){
+    if(idx === 0) return '1~9홀 (전반)';
+    if(idx === 1) return '10~18홀 (후반)';
+    return '19~27홀 (추가)';
+  }
+
+  function renderNineBlocks(){
+    const container = document.getElementById('nine-blocks');
+    container.innerHTML = '';
+    setupNines.forEach((block, bi)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'nine-block';
+      const sourceHtml = block.sourceLabel ? `<div class="nine-block-source">불러옴: ${escapeHtml(block.sourceLabel)}</div>` : '';
+      wrap.innerHTML = `
+        <div class="nine-block-head">
+          <div class="nine-block-title">${nineBlockTitle(bi)}</div>
+          <div class="nine-block-actions">
+            <button class="par-preset" data-nine-action="load" data-nine-idx="${bi}">불러오기</button>
+            <button class="par-preset" data-nine-action="save" data-nine-idx="${bi}">저장</button>
+          </div>
+        </div>
+        ${sourceHtml}
+        <div class="hole-par-grid" id="nine-grid-${bi}"></div>`;
+      container.appendChild(wrap);
+      const grid = wrap.querySelector(`#nine-grid-${bi}`);
+      for(let i=0;i<9;i++){
+        const cell = document.createElement('div');
+        cell.className = 'hole-par-cell';
+        cell.innerHTML = `
+          <div class="hnum">HOLE ${bi*9 + i + 1}</div>
+          <div class="pval" id="nine-val-${bi}-${i}">${block.pars[i]}</div>
+          <div class="par-steps">
+            <button class="par-step-btn" data-nine="${bi}" data-i="${i}" data-d="-1">－</button>
+            <button class="par-step-btn" data-nine="${bi}" data-i="${i}" data-d="1">＋</button>
+          </div>`;
+        grid.appendChild(cell);
+      }
+    });
+    container.querySelectorAll('.par-step-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
+        const bi = parseInt(btn.dataset.nine,10);
         const i = parseInt(btn.dataset.i,10);
         const d = parseInt(btn.dataset.d,10);
-        let v = setupPars[i] + d;
+        let v = setupNines[bi].pars[i] + d;
         v = Math.max(3, Math.min(6, v));
-        setupPars[i] = v;
-        document.getElementById('par-val-'+i).textContent = v;
+        setupNines[bi].pars[i] = v;
+        document.getElementById(`nine-val-${bi}-${i}`).textContent = v;
       });
     });
+    container.querySelectorAll('[data-nine-action="load"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openNinePicker(parseInt(btn.dataset.nineIdx,10)));
+    });
+    container.querySelectorAll('[data-nine-action="save"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openNineSavePrompt(parseInt(btn.dataset.nineIdx,10)));
+    });
+    updateToggle27Button();
   }
+
+  function updateToggle27Button(){
+    const btn = document.getElementById('btn-toggle-27');
+    btn.textContent = setupNines.length >= 3 ? '－ 9홀 제거하고 18홀로' : '＋ 9홀 추가해서 27홀로';
+  }
+  document.getElementById('btn-toggle-27').addEventListener('click', ()=>{
+    if(setupNines.length >= 3){
+      setupNines.pop();
+    } else {
+      setupNines.push({pars: default9()});
+    }
+    renderNineBlocks();
+  });
 
   function openSetup(){
     document.getElementById('input-course').value = '';
     populateDateSelects(todayISO());
-    setupPars = new Array(18).fill(4);
+    setupNines = [ {pars: default9()}, {pars: default9()} ];
     setupScoreMode = 'par';
     renderModeToggle();
-    renderParGrids();
+    renderNineBlocks();
     showScreen('screen-setup');
   }
 
   document.getElementById('btn-new-round').addEventListener('click', openSetup);
   document.getElementById('btn-setup-back').addEventListener('click', ()=> showScreen('screen-home'));
   document.getElementById('btn-preset-72').addEventListener('click', ()=>{
-    // Standard-ish 72 pattern: mostly par4, four par3, four par5
-    setupPars = [4,3,5,4,4,3,4,5,4, 4,3,5,4,4,3,4,5,4];
-    renderParGrids();
+    setupNines.forEach(block => { block.pars = [...NINE_PATTERN]; delete block.sourceLabel; });
+    renderNineBlocks();
+  });
+
+  /* ---------------- 9-hole course templates (load into a specific block) ---------------- */
+  let ninePickerTargetIdx = null;
+  let nineSaveTargetIdx = null;
+
+  function renderNinePickerList(){
+    const list = document.getElementById('nine-picker-list');
+    list.innerHTML = '';
+    if(nineTemplates.length === 0){
+      list.innerHTML = `
+        <div class="empty-state" style="margin-top:10px;">
+          <div class="flag">⛳</div>
+          <h3>저장된 9홀 코스가 없어요</h3>
+          <p>각 구간의 '저장' 버튼으로<br>9홀 코스를 등록해보세요.</p>
+        </div>`;
+      return;
+    }
+    const sortedN = [...nineTemplates].sort((a,b)=> a.courseName.localeCompare(b.courseName,'ko') || a.nineName.localeCompare(b.nineName,'ko'));
+    sortedN.forEach(t=>{
+      const parSum = t.pars.reduce((a,b)=>a+b,0);
+      const item = document.createElement('div');
+      item.className = 'template-item';
+      item.innerHTML = `
+        <div class="del" data-id="${t.id}">삭제</div>
+        <div class="template-name">${escapeHtml(t.courseName)} · ${escapeHtml(t.nineName)}</div>
+        <div class="template-par">9홀 파 ${parSum}</div>`;
+      item.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('del')) return;
+        if(ninePickerTargetIdx === null) return;
+        setupNines[ninePickerTargetIdx].pars = [...t.pars];
+        setupNines[ninePickerTargetIdx].sourceLabel = `${t.courseName} ${t.nineName}`;
+        if(!document.getElementById('input-course').value.trim()){
+          document.getElementById('input-course').value = t.courseName;
+        }
+        renderNineBlocks();
+        closeNinePicker();
+        showToast(`${t.courseName} ${t.nineName} 코스를 불러왔어요`);
+      });
+      item.querySelector('.del').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        askConfirm('9홀 코스 삭제', `'${t.courseName} ${t.nineName}' 코스를 삭제할까요?`, ()=>{
+          nineTemplates = nineTemplates.filter(x=>x.id !== t.id);
+          saveNineTemplates(nineTemplates);
+          renderNinePickerList();
+          showToast('삭제되었습니다');
+        });
+      });
+      list.appendChild(item);
+    });
+  }
+  function openNinePicker(idx){
+    ninePickerTargetIdx = idx;
+    renderNinePickerList();
+    document.getElementById('nine-picker-overlay').classList.add('show');
+  }
+  function closeNinePicker(){
+    document.getElementById('nine-picker-overlay').classList.remove('show');
+  }
+  document.getElementById('btn-nine-picker-close').addEventListener('click', closeNinePicker);
+  document.getElementById('nine-picker-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'nine-picker-overlay') closeNinePicker();
+  });
+
+  function openNineSavePrompt(idx){
+    nineSaveTargetIdx = idx;
+    document.getElementById('input-nine-save-course').value = document.getElementById('input-course').value.trim();
+    document.getElementById('input-nine-save-name').value = '';
+    document.getElementById('nine-save-overlay').classList.add('show');
+  }
+  function closeNineSavePrompt(){
+    document.getElementById('nine-save-overlay').classList.remove('show');
+  }
+  document.getElementById('btn-nine-save-close').addEventListener('click', closeNineSavePrompt);
+  document.getElementById('nine-save-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'nine-save-overlay') closeNineSavePrompt();
+  });
+  document.getElementById('btn-nine-save-confirm').addEventListener('click', ()=>{
+    const courseName = document.getElementById('input-nine-save-course').value.trim();
+    const nineName = document.getElementById('input-nine-save-name').value.trim();
+    if(!courseName || !nineName){
+      showToast('골프장 이름과 코스 이름을 모두 입력해주세요');
+      return;
+    }
+    if(nineSaveTargetIdx === null) return;
+    const pars = [...setupNines[nineSaveTargetIdx].pars];
+    const existingIdx = nineTemplates.findIndex(t => t.courseName === courseName && t.nineName === nineName);
+    const doSave = ()=>{
+      const tmpl = { id: existingIdx >= 0 ? nineTemplates[existingIdx].id : uid(), courseName, nineName, pars };
+      if(existingIdx >= 0) nineTemplates[existingIdx] = tmpl; else nineTemplates.push(tmpl);
+      saveNineTemplates(nineTemplates);
+      setupNines[nineSaveTargetIdx].sourceLabel = `${courseName} ${nineName}`;
+      renderNineBlocks();
+      closeNineSavePrompt();
+      showToast('9홀 코스가 저장되었어요');
+    };
+    if(existingIdx >= 0){
+      askConfirm('9홀 코스 저장', `이미 '${courseName} ${nineName}' 코스가 있어요. 덮어쓸까요?`, doSave, '덮어쓰기', 'positive');
+    } else {
+      doSave();
+    }
   });
 
   /* ---------------- Saved course templates (score card presets) ---------------- */
@@ -978,9 +1211,9 @@
         <div class="template-par">코스 파 ${parSum}</div>`;
       item.addEventListener('click', (e)=>{
         if(e.target.classList.contains('del')) return;
-        setupPars = [...t.pars];
+        setupNines = chunk9(t.pars).map(p => ({ pars: [...p] }));
         document.getElementById('input-course').value = t.name;
-        renderParGrids();
+        renderNineBlocks();
         closeTemplateOverlay();
         showToast(`${t.name} 정보를 불러왔어요`);
       });
@@ -1009,6 +1242,34 @@
     if(e.target.id === 'template-overlay') closeTemplateOverlay();
   });
 
+  /* ---------------- Rename saved round's course name ---------------- */
+  function openRenameOverlay(){
+    const r = getActiveRound();
+    document.getElementById('input-rename-course').value = r.courseName;
+    document.getElementById('rename-overlay').classList.add('show');
+  }
+  function closeRenameOverlay(){
+    document.getElementById('rename-overlay').classList.remove('show');
+  }
+  document.getElementById('btn-rename-course').addEventListener('click', openRenameOverlay);
+  document.getElementById('btn-rename-close').addEventListener('click', closeRenameOverlay);
+  document.getElementById('rename-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'rename-overlay') closeRenameOverlay();
+  });
+  document.getElementById('btn-rename-save').addEventListener('click', ()=>{
+    const name = document.getElementById('input-rename-course').value.trim();
+    if(!name){
+      showToast('이름을 입력해주세요');
+      return;
+    }
+    const r = getActiveRound();
+    r.courseName = name;
+    saveRounds(rounds);
+    document.getElementById('play-course').textContent = name;
+    closeRenameOverlay();
+    showToast('이름이 수정되었습니다');
+  });
+
   document.getElementById('btn-save-template').addEventListener('click', ()=>{
     const name = document.getElementById('input-course').value.trim();
     if(!name){
@@ -1017,7 +1278,8 @@
     }
     const existingIdx = templates.findIndex(t => t.name === name);
     const doSave = ()=>{
-      const tmpl = { id: existingIdx >= 0 ? templates[existingIdx].id : uid(), name, pars: [...setupPars] };
+      const combinedPars = setupNines.flatMap(b => b.pars);
+      const tmpl = { id: existingIdx >= 0 ? templates[existingIdx].id : uid(), name, pars: combinedPars };
       if(existingIdx >= 0) templates[existingIdx] = tmpl; else templates.push(tmpl);
       saveTemplates(templates);
       showToast('골프장 정보가 저장되었어요');
@@ -1036,13 +1298,14 @@
       showToast('골프장 이름을 입력해주세요');
       return;
     }
+    const combinedPars = setupNines.flatMap(b => b.pars);
     const newRound = {
       id: uid(),
       courseName: course,
       date: date,
-      pars: [...setupPars],
+      pars: combinedPars,
       scoreMode: setupScoreMode,
-      scores: setupScoreMode === 'zero' ? new Array(18).fill(0) : [...setupPars],
+      scores: setupScoreMode === 'zero' ? new Array(combinedPars.length).fill(0) : [...combinedPars],
       status: 'in_progress'
     };
     rounds.push(newRound);
@@ -1064,6 +1327,7 @@
     currentHole = (typeof r.lastHole === 'number') ? r.lastHole : 0;
     document.getElementById('play-course').textContent = r.courseName;
     document.getElementById('play-date').textContent = fmtDate(r.date);
+    document.getElementById('btn-finish-round').textContent = (r.status === 'finished') ? '수정 완료' : '라운드 종료 및 저장';
     renderHoleStrip();
     renderPlayHole();
     renderPlaySummary();
@@ -1075,7 +1339,7 @@
     const mode = r.scoreMode || 'par';
     const strip = document.getElementById('hole-strip');
     strip.innerHTML = '';
-    for(let i=0;i<18;i++){
+    for(let i=0;i<r.pars.length;i++){
       const chip = document.createElement('div');
       const sc = r.scores[i];
       const untouched = mode === 'zero' && sc === 0;
@@ -1115,7 +1379,7 @@
       relEl.classList.toggle('rel-cap', sc >= par * 2);
     }
     document.getElementById('btn-hole-prev').disabled = currentHole === 0;
-    document.getElementById('btn-hole-next').textContent = currentHole === 17 ? '완료 ›' : '다음 홀 ›';
+    document.getElementById('btn-hole-next').textContent = currentHole === r.pars.length - 1 ? '완료 ›' : '다음 홀 ›';
     document.getElementById('btn-stroke-plus').disabled = sc >= par * 2;
   }
 
@@ -1137,7 +1401,7 @@
     const { total, diff, hasAny } = roundStats(r);
     document.getElementById('play-total').textContent = total;
     document.getElementById('play-topar').textContent = hasAny ? toParLabel(diff) : 'E';
-    document.getElementById('play-thru').textContent = (currentHole+1) + '/18';
+    document.getElementById('play-thru').textContent = (currentHole+1) + '/' + r.pars.length;
   }
 
   function setStroke(delta){
@@ -1173,7 +1437,8 @@
     if(currentHole > 0) goToHole(currentHole - 1);
   });
   document.getElementById('btn-hole-next').addEventListener('click', ()=>{
-    if(currentHole < 17) goToHole(currentHole + 1);
+    const r = getActiveRound();
+    if(currentHole < r.pars.length - 1) goToHole(currentHole + 1);
     else {
       // last hole -> prompt finish
       document.getElementById('btn-finish-round').click();
@@ -1181,26 +1446,35 @@
   });
 
   document.getElementById('btn-play-close').addEventListener('click', ()=>{
-    askConfirm('임시 저장', '지금까지 입력한 스코어가 임시 저장되어 있어요. 홈 화면에서 다시 이어할 수 있습니다.', ()=>{
-      showScreen('screen-home');
-      renderHome();
-    }, '홈으로', 'positive');
+    const r = getActiveRound();
+    if(r.status === 'finished'){
+      askConfirm('닫기', '지금까지 수정한 내용이 저장되어 있어요.', ()=>{
+        showScreen('screen-home');
+        renderHome();
+      }, '확인', 'positive');
+    } else {
+      askConfirm('임시 저장', '지금까지 입력한 스코어가 임시 저장되어 있어요. 홈 화면에서 다시 이어할 수 있습니다.', ()=>{
+        showScreen('screen-home');
+        renderHome();
+      }, '홈으로', 'positive');
+    }
   });
 
   document.getElementById('btn-finish-round').addEventListener('click', ()=>{
     const r = getActiveRound();
     const mode = r.scoreMode || 'par';
-    let msg = '라운드를 저장하고 홈으로 이동합니다.';
-    if(mode === 'zero'){
+    const isEdit = r.status === 'finished';
+    let msg = isEdit ? '수정한 내용을 저장하고 홈으로 이동합니다.' : '라운드를 저장하고 홈으로 이동합니다.';
+    if(!isEdit && mode === 'zero'){
       const missing = r.scores.filter(s=>!s || s===0).length;
       if(missing > 0) msg = `${missing}개 홀이 아직 입력되지 않았어요. 그래도 저장할까요?`;
     }
-    askConfirm('라운드 종료 및 저장', msg, ()=>{
+    askConfirm(isEdit ? '수정 완료' : '라운드 종료 및 저장', msg, ()=>{
       r.status = 'finished';
       saveRounds(rounds);
       showScreen('screen-home');
       renderHome();
-      showToast('라운드가 저장되었습니다');
+      showToast(isEdit ? '수정한 내용이 저장되었습니다' : '라운드가 저장되었습니다');
     }, '저장', 'positive');
   });
 
@@ -1219,7 +1493,13 @@
 
     const table = document.getElementById('detail-table');
     table.innerHTML = '';
-    [[0,9,'전반 (OUT)'],[9,18,'후반 (IN)']].forEach(([start,end,label])=>{
+    const nineLabels = ['전반 (OUT)', '후반 (IN)', '추가 (EX)'];
+    const sections = [];
+    for(let start=0; start<r.pars.length; start+=9){
+      sections.push([start, Math.min(start+9, r.pars.length)]);
+    }
+    sections.forEach(([start,end], si)=>{
+      const label = nineLabels[si] || `${si+1}구간`;
       const wrap = document.createElement('div');
       wrap.className = 'detail-nine';
       let rowsHtml = `<div class="detail-row head"><div>홀</div><div>${label}</div><div style="text-align:right">파</div><div style="text-align:right">타수</div></div>`;
@@ -1250,6 +1530,9 @@
     showScreen('screen-home');
     renderHome();
   });
+  document.getElementById('btn-detail-edit').addEventListener('click', ()=>{
+    openPlay(detailRoundId);
+  });
   document.getElementById('btn-detail-del').addEventListener('click', ()=>{
     const r = rounds.find(x=>x.id===detailRoundId);
     askConfirm('라운드 삭제', `${r.courseName} 기록을 삭제할까요?`, ()=>{
@@ -1261,7 +1544,7 @@
     });
   });
 
-  /* also allow resuming an unfinished round from detail? keep simple: view only from home list */
+  /* editing an already-finished round: opens the play screen; finishing again keeps it saved as finished */
 
   /* ---------------- init ---------------- */
   renderHome();
