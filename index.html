@@ -1550,5 +1550,13 @@
   renderHome();
 })();
 </script>
+<script>
+  // 오프라인 지원: 처음 온라인으로 열면 캐시해두고, 이후엔 오프라인에서도 실행됩니다.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
