@@ -383,6 +383,64 @@
   .nav-btn.finish{ background:var(--fairway-deep); color:var(--cream); }
   .nav-btn:disabled{ opacity:0.35; }
 
+  .play-pin-bar{
+    width:100%; max-width:380px;
+    background:#fff;
+    border:2px solid var(--line);
+    border-radius:16px;
+    padding:12px 14px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .play-pin-top{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .play-pin-dist .play-pin-label{
+    display:block; font-size:11px; font-weight:800; letter-spacing:0.5px;
+    color:var(--ink-soft); text-transform:uppercase;
+  }
+  .play-pin-dist strong{
+    font-size:28px; font-weight:800; color:var(--fairway-deep); line-height:1.1;
+  }
+  .play-pin-dist strong.muted{ color:var(--ink-soft); font-size:18px; font-weight:700; }
+  .play-pin-unit{
+    border:2px solid var(--line); background:var(--cream);
+    color:var(--fairway-deep); border-radius:999px;
+    padding:6px 12px; font-size:12px; font-weight:800; cursor:pointer;
+  }
+  .play-pin-actions{ display:flex; gap:6px; }
+  .play-pin-actions button{
+    flex:1; border:none; border-radius:12px; padding:10px 6px;
+    font-size:12px; font-weight:800; cursor:pointer;
+    background:var(--cream-dim); color:var(--fairway-deep);
+  }
+  .play-pin-actions button.primary{ background:var(--fairway); color:#fff; }
+  .play-pin-actions button:active{ opacity:0.85; }
+  .play-pin-meta{
+    font-size:11px; color:var(--ink-soft); font-weight:600; margin:0;
+  }
+
+  #hole-pin-map-overlay .sheet{
+    height:min(92vh, 720px); max-height:92vh;
+    display:flex; flex-direction:column;
+  }
+  #hole-pin-map-overlay .sheet-body{
+    flex:1; min-height:0; display:flex; flex-direction:column; gap:10px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  #play-hole-pin-map{
+    flex:1; min-height:220px; border-radius:14px; overflow:hidden;
+    background:#d8e5d9;
+  }
+  .hole-pin-map-actions{ display:flex; gap:8px; }
+  .hole-pin-map-actions .primary-btn,
+  .hole-pin-map-actions .ghost-btn{
+    margin:0; flex:1; padding:12px; font-size:14px;
+  }
+  .hole-pin-map-actions .ghost-btn{
+    border:2px solid var(--line); background:var(--cream);
+    color:var(--fairway-deep); border-radius:14px; font-weight:800;
+  }
+
   .bottom-bar{
     flex:0 0 auto;
     background:var(--cream);
@@ -615,8 +673,10 @@
     font-weight:800;
     border-radius:14px;
   }
-  .pins-actions .primary-btn.active{
-    background:var(--gold);
+  .pins-actions .ghost-btn.active{
+    background:var(--fairway);
+    color:#fff;
+    border-color:var(--fairway);
   }
   .pins-mode-hint{
     margin:0;
@@ -653,7 +713,11 @@
     box-shadow:var(--shadow); white-space:nowrap;
   }
   .pin-action-btn:active{ transform:scale(0.96); }
+  .pin-action-btn.active{
+    background:var(--gold); color:#fff; box-shadow:none;
+  }
   .pin-action-btn.danger{ color:var(--flag-red); background:#F7E4DE; box-shadow:none; }
+  .pin-action-btn.danger.active{ background:var(--flag-red); color:#fff; }
   .pin-edit-btn{
     border:0; background:#fff; color:var(--fairway);
     border-radius:10px; padding:8px 10px;
@@ -786,6 +850,21 @@
       <div class="hole-title">
         <div class="big" id="play-holenum">HOLE 1</div>
         <div class="par" id="play-holepar">PAR 4</div>
+      </div>
+      <div class="play-pin-bar">
+        <div class="play-pin-top">
+          <div class="play-pin-dist">
+            <span class="play-pin-label">이 홀 핀까지</span>
+            <strong id="play-pin-distance" class="muted">핀 미설정</strong>
+          </div>
+          <button type="button" class="play-pin-unit" id="btn-play-pin-unit">yd</button>
+        </div>
+        <p class="play-pin-meta" id="play-pin-meta">저장된 핀을 불러오거나 지도에서 지정하세요</p>
+        <div class="play-pin-actions">
+          <button type="button" id="btn-play-pin-load">불러오기</button>
+          <button type="button" id="btn-play-pin-map">핀설정</button>
+          <button type="button" class="primary" id="btn-play-pin-calc">거리계산</button>
+        </div>
       </div>
       <div class="stroke-wrap">
         <div class="stroke-display">
@@ -923,12 +1002,39 @@
     <div class="sheet-body">
       <div class="field-label" style="margin-top:0;">이름</div>
       <input class="text-input" id="input-pin-name" placeholder="예) 홀 1" maxlength="40">
-      <p style="font-size:12px; color:var(--ink-soft); margin:10px 0 0; line-height:1.5;">위치를 바꾸려면 ‘위치 이동’ 후 지도를 탭하세요.</p>
+      <p style="font-size:12px; color:var(--ink-soft); margin:10px 0 0; line-height:1.5;">위치를 바꾸려면 ‘위치 이동’을 누른 뒤, 지도를 탭하세요. 다시 누르면 종료됩니다.</p>
       <div class="pin-edit-actions">
         <button class="ghost-btn" id="btn-pin-move" style="border:2px solid var(--line); background:var(--cream); color:var(--fairway-deep);">위치 이동</button>
         <button class="danger-btn" id="btn-pin-delete">삭제</button>
       </div>
       <button class="primary-btn" id="btn-pin-edit-save" style="margin-top:12px;">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="play-pin-load-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="sheet-close-center" id="btn-play-pin-load-close">✕</button>
+      <div class="sheet-title">핀 불러오기</div>
+    </div>
+    <div class="sheet-body" id="play-pin-load-list"></div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="hole-pin-map-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="sheet-close-center" id="btn-hole-pin-map-close">✕</button>
+      <div class="sheet-title" id="hole-pin-map-title">홀 핀 설정</div>
+    </div>
+    <div class="sheet-body">
+      <p class="pins-mode-hint" id="hole-pin-map-hint" style="display:block;">지도를 탭하면 이 홀의 핀 위치가 저장됩니다.</p>
+      <div id="play-hole-pin-map"></div>
+      <div class="hole-pin-map-actions">
+        <button type="button" class="ghost-btn" id="btn-hole-pin-clear">핀 삭제</button>
+        <button type="button" class="primary-btn" id="btn-hole-pin-calc">거리계산</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1487,6 +1593,7 @@
       pars: combinedPars,
       scoreMode: setupScoreMode,
       scores: setupScoreMode === 'zero' ? new Array(combinedPars.length).fill(0) : [...combinedPars],
+      holePins: new Array(combinedPars.length).fill(null),
       status: 'in_progress'
     };
     rounds.push(newRound);
@@ -1497,18 +1604,101 @@
   /* ---------------- PLAY screen ---------------- */
   let activeRoundId = null;
   let currentHole = 0;
+  let playHoleMap = null;
+  let playHoleMapReady = false;
+  let playHolePinMarker = null;
+  let playUserMarker = null;
+  let playDistanceLine = null;
+  let playDistanceLineVisible = false;
+  let playHoleMapMode = 'set'; // set | view
 
   function getActiveRound(){
     return rounds.find(r=>r.id === activeRoundId);
   }
 
+  function ensureHolePins(r){
+    if(!r) return;
+    if(!Array.isArray(r.holePins)) r.holePins = [];
+    while(r.holePins.length < r.pars.length) r.holePins.push(null);
+    if(r.holePins.length > r.pars.length) r.holePins.length = r.pars.length;
+  }
+
+  function getCurrentHolePin(){
+    const r = getActiveRound();
+    if(!r) return null;
+    ensureHolePins(r);
+    return r.holePins[currentHole] || null;
+  }
+
+  function setCurrentHolePin(data){
+    const r = getActiveRound();
+    if(!r) return;
+    ensureHolePins(r);
+    r.holePins[currentHole] = data
+      ? { lat: data.lat, lng: data.lng, name: data.name || ('홀 ' + (currentHole + 1)), sourcePinId: data.sourcePinId || null }
+      : null;
+    saveRounds(rounds);
+  }
+
+  function findGlobalPinForHole(holeIndex){
+    loadPinState();
+    const n = holeIndex + 1;
+    const names = ['홀 ' + n, '홀' + n, String(n), 'Hole ' + n, 'H' + n];
+    return pinState.pins.find(p => names.includes(String(p.name || '').trim())) || null;
+  }
+
+  function syncHolePinToLibrary(holeIndex, lat, lng){
+    loadPinState();
+    const name = '홀 ' + (holeIndex + 1);
+    let pin = pinState.pins.find(p => p.name === name);
+    if(pin){
+      pin.lat = lat;
+      pin.lng = lng;
+    } else {
+      pin = { id: uid(), name: name, lat: lat, lng: lng };
+      pinState.pins.push(pin);
+    }
+    savePinState();
+    return pin;
+  }
+
+  function updatePlayPinDistance(){
+    const distEl = document.getElementById('play-pin-distance');
+    const metaEl = document.getElementById('play-pin-meta');
+    const unitBtn = document.getElementById('btn-play-pin-unit');
+    if(!distEl) return;
+    unitBtn.textContent = pinState.unit;
+    const holePin = getCurrentHolePin();
+    if(!holePin){
+      distEl.textContent = '핀 미설정';
+      distEl.classList.add('muted');
+      const sug = findGlobalPinForHole(currentHole);
+      metaEl.textContent = sug
+        ? ('‘' + sug.name + '’ 핀을 불러올 수 있습니다')
+        : '저장된 핀을 불러오거나 지도에서 지정하세요';
+      return;
+    }
+    metaEl.textContent = (holePin.name || ('홀 ' + (currentHole + 1))) +
+      ' · ' + holePin.lat.toFixed(5) + ', ' + holePin.lng.toFixed(5);
+    if(pinState.userLat == null || pinState.userLng == null){
+      distEl.textContent = 'GPS 대기';
+      distEl.classList.add('muted');
+      return;
+    }
+    const meters = haversineMeters(pinState.userLat, pinState.userLng, holePin.lat, holePin.lng);
+    distEl.textContent = formatPinDistance(meters);
+    distEl.classList.remove('muted');
+  }
+
   function openPlay(id){
     activeRoundId = id;
     const r = getActiveRound();
+    ensureHolePins(r);
     currentHole = (typeof r.lastHole === 'number') ? r.lastHole : 0;
     document.getElementById('play-course').textContent = r.courseName;
     document.getElementById('play-date').textContent = fmtDate(r.date);
     document.getElementById('btn-finish-round').textContent = (r.status === 'finished') ? '수정 완료' : '라운드 종료 및 저장';
+    startPinGps();
     renderHoleStrip();
     renderPlayHole();
     renderPlaySummary();
@@ -1562,6 +1752,7 @@
     document.getElementById('btn-hole-prev').disabled = currentHole === 0;
     document.getElementById('btn-hole-next').textContent = currentHole === r.pars.length - 1 ? '완료 ›' : '다음 홀 ›';
     document.getElementById('btn-stroke-plus').disabled = sc >= par * 2;
+    updatePlayPinDistance();
   }
 
   function parName(diff, sc, par){
@@ -1603,6 +1794,7 @@
 
   function goToHole(i){
     currentHole = i;
+    playDistanceLineVisible = false;
     const r = getActiveRound();
     r.lastHole = i;
     saveRounds(rounds);
@@ -1657,6 +1849,236 @@
       renderHome();
       showToast(isEdit ? '수정한 내용이 저장되었습니다' : '라운드가 저장되었습니다');
     }, '저장', 'positive');
+  });
+
+  /* ---- Play hole pin map / load ---- */
+  function updatePlayHoleMapLayers(){
+    if(!playHoleMap) return;
+    const holePin = getCurrentHolePin();
+
+    if(holePin){
+      if(!playHolePinMarker){
+        playHolePinMarker = L.marker([holePin.lat, holePin.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="pin-map-flag"><span></span></div>',
+            iconSize: [22, 28],
+            iconAnchor: [4, 28]
+          })
+        }).addTo(playHoleMap);
+      } else {
+        playHolePinMarker.setLatLng([holePin.lat, holePin.lng]);
+      }
+    } else if(playHolePinMarker){
+      playHoleMap.removeLayer(playHolePinMarker);
+      playHolePinMarker = null;
+    }
+
+    if(pinState.userLat != null){
+      if(!playUserMarker){
+        playUserMarker = L.marker([pinState.userLat, pinState.userLng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="user-dot"></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          }),
+          zIndexOffset: 1000
+        }).addTo(playHoleMap);
+      } else {
+        playUserMarker.setLatLng([pinState.userLat, pinState.userLng]);
+      }
+    }
+
+    if(playDistanceLineVisible && holePin && pinState.userLat != null){
+      const latlngs = [
+        [pinState.userLat, pinState.userLng],
+        [holePin.lat, holePin.lng]
+      ];
+      if(!playDistanceLine){
+        playDistanceLine = L.polyline(latlngs, {
+          color: '#C4432C',
+          weight: 3,
+          opacity: 0.95,
+          dashArray: '10 12',
+          lineCap: 'round',
+          interactive: false
+        }).addTo(playHoleMap);
+      } else {
+        playDistanceLine.setLatLngs(latlngs);
+      }
+    } else if(playDistanceLine){
+      playHoleMap.removeLayer(playDistanceLine);
+      playDistanceLine = null;
+    }
+  }
+
+  function initPlayHoleMap(){
+    if(playHoleMapReady || typeof L === 'undefined') return;
+    playHoleMap = L.map('play-hole-pin-map', {
+      zoomControl: false,
+      attributionControl: true
+    }).setView([37.5665, 126.978], 16);
+    L.control.zoom({ position: 'topright' }).addTo(playHoleMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OSM'
+    }).addTo(playHoleMap);
+    playHoleMap.on('click', e => {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+      const lib = syncHolePinToLibrary(currentHole, lat, lng);
+      setCurrentHolePin({
+        lat: lat,
+        lng: lng,
+        name: '홀 ' + (currentHole + 1),
+        sourcePinId: lib.id
+      });
+      document.getElementById('hole-pin-map-hint').textContent =
+        '핀이 저장되었습니다. 다시 탭하면 위치가 갱신됩니다.';
+      updatePlayHoleMapLayers();
+      updatePlayPinDistance();
+      showToast('홀 ' + (currentHole + 1) + ' 핀 저장');
+    });
+    playHoleMapReady = true;
+  }
+
+  function openPlayHolePinMap(opts){
+    const keepDistance = !!(opts && opts.keepDistance);
+    if(!keepDistance) playDistanceLineVisible = false;
+    document.getElementById('hole-pin-map-title').textContent = '홀 ' + (currentHole + 1) + ' 핀 설정';
+    document.getElementById('hole-pin-map-hint').textContent = keepDistance
+      ? '현재 위치와 핀을 점선으로 연결합니다.'
+      : '지도를 탭하면 이 홀의 핀 위치가 저장됩니다. (핀 거리 목록에도 함께 반영)';
+    document.getElementById('hole-pin-map-overlay').classList.add('show');
+    startPinGps();
+    initPlayHoleMap();
+    setTimeout(() => {
+      if(!playHoleMap) return;
+      playHoleMap.invalidateSize();
+      updatePlayHoleMapLayers();
+      const holePin = getCurrentHolePin();
+      if(holePin && pinState.userLat != null){
+        playHoleMap.fitBounds(L.latLngBounds(
+          [holePin.lat, holePin.lng],
+          [pinState.userLat, pinState.userLng]
+        ).pad(0.4), { maxZoom: 18 });
+      } else if(holePin){
+        playHoleMap.setView([holePin.lat, holePin.lng], 17);
+      } else if(pinState.userLat != null){
+        playHoleMap.setView([pinState.userLat, pinState.userLng], 17);
+      }
+    }, 80);
+  }
+
+  function calcPlayHoleDistance(){
+    const holePin = getCurrentHolePin();
+    if(!holePin){
+      showToast('먼저 이 홀의 핀을 설정하세요');
+      return;
+    }
+    startPinGps();
+    playDistanceLineVisible = true;
+    updatePlayPinDistance();
+    if(pinState.userLat == null){
+      showToast('GPS 위치를 잡는 중입니다…');
+      openPlayHolePinMap({ keepDistance: true });
+      return;
+    }
+    const overlayOpen = document.getElementById('hole-pin-map-overlay').classList.contains('show');
+    if(!overlayOpen) openPlayHolePinMap({ keepDistance: true });
+    else {
+      document.getElementById('hole-pin-map-hint').textContent =
+        '현재 위치와 핀을 점선으로 연결합니다.';
+      updatePlayHoleMapLayers();
+      if(playHoleMap){
+        playHoleMap.fitBounds(L.latLngBounds(
+          [holePin.lat, holePin.lng],
+          [pinState.userLat, pinState.userLng]
+        ).pad(0.4), { maxZoom: 18, animate: true });
+      }
+    }
+    showToast('거리 표시');
+  }
+
+  function openPlayPinLoadSheet(){
+    loadPinState();
+    const list = document.getElementById('play-pin-load-list');
+    list.innerHTML = '';
+    const suggested = findGlobalPinForHole(currentHole);
+
+    if(pinState.pins.length === 0){
+      list.innerHTML = '<p style="color:var(--ink-soft); font-size:14px; line-height:1.5;">저장된 핀이 없습니다. 홈의 ⛳ 핀 거리에서 먼저 핀을 추가하거나, 지도에서 직접 지정하세요.</p>';
+      document.getElementById('play-pin-load-overlay').classList.add('show');
+      return;
+    }
+
+    if(suggested){
+      const tip = document.createElement('p');
+      tip.style.cssText = 'font-size:12px; color:var(--fairway); font-weight:700; margin:0 0 10px;';
+      tip.textContent = '홀 ' + (currentHole + 1) + ' 이름과 일치하는 핀이 있습니다.';
+      list.appendChild(tip);
+    }
+
+    const sorted = [...pinState.pins].sort((a, b) => {
+      const aMatch = suggested && a.id === suggested.id ? 0 : 1;
+      const bMatch = suggested && b.id === suggested.id ? 0 : 1;
+      if(aMatch !== bMatch) return aMatch - bMatch;
+      return String(a.name).localeCompare(String(b.name), 'ko');
+    });
+
+    sorted.forEach(pin => {
+      const row = document.createElement('div');
+      row.className = 'round-card';
+      row.style.marginBottom = '10px';
+      if(suggested && pin.id === suggested.id) row.style.borderLeftColor = 'var(--gold)';
+      row.innerHTML =
+        '<div class="course">' + escapeHtml(pin.name) + '</div>' +
+        '<div class="date">' + pin.lat.toFixed(5) + ', ' + pin.lng.toFixed(5) + '</div>';
+      row.addEventListener('click', () => {
+        setCurrentHolePin({
+          lat: pin.lat,
+          lng: pin.lng,
+          name: pin.name,
+          sourcePinId: pin.id
+        });
+        document.getElementById('play-pin-load-overlay').classList.remove('show');
+        updatePlayPinDistance();
+        showToast('홀 ' + (currentHole + 1) + '에 핀을 연결했습니다');
+      });
+      list.appendChild(row);
+    });
+
+    document.getElementById('play-pin-load-overlay').classList.add('show');
+  }
+
+  document.getElementById('btn-play-pin-load').addEventListener('click', openPlayPinLoadSheet);
+  document.getElementById('btn-play-pin-load-close').addEventListener('click', ()=>{
+    document.getElementById('play-pin-load-overlay').classList.remove('show');
+  });
+  document.getElementById('btn-play-pin-map').addEventListener('click', openPlayHolePinMap);
+  document.getElementById('btn-play-pin-calc').addEventListener('click', calcPlayHoleDistance);
+  document.getElementById('btn-hole-pin-map-close').addEventListener('click', ()=>{
+    document.getElementById('hole-pin-map-overlay').classList.remove('show');
+  });
+  document.getElementById('btn-hole-pin-calc').addEventListener('click', ()=>{
+    playDistanceLineVisible = true;
+    calcPlayHoleDistance();
+  });
+  document.getElementById('btn-hole-pin-clear').addEventListener('click', ()=>{
+    askConfirm('홀 핀 삭제', '홀 ' + (currentHole + 1) + '에 저장된 핀을 삭제할까요?', ()=>{
+      setCurrentHolePin(null);
+      playDistanceLineVisible = false;
+      updatePlayHoleMapLayers();
+      updatePlayPinDistance();
+      showToast('홀 핀이 삭제되었습니다');
+    });
+  });
+  document.getElementById('btn-play-pin-unit').addEventListener('click', ()=>{
+    pinState.unit = pinState.unit === 'yd' ? 'm' : 'yd';
+    savePinState();
+    updatePlayPinDistance();
+    updatePinReadout();
   });
 
   /* ---------------- DETAIL screen ---------------- */
@@ -1742,6 +2164,8 @@
   let pinMap = null;
   let pinLayer = null;
   let userMarker = null;
+  let distanceLine = null;
+  let distanceLineVisible = false;
   const pinMarkers = new Map();
   let editingPinId = null;
 
@@ -1791,15 +2215,80 @@
     if(!pin){
       document.getElementById('pin-active-label').textContent = '핀을 선택하거나 지도에 추가하세요';
       document.getElementById('pin-distance').textContent = '—';
+      updateDistanceLine();
       return;
     }
     document.getElementById('pin-active-label').textContent = pin.name;
     if(pinState.userLat == null || pinState.userLng == null){
       document.getElementById('pin-distance').textContent = '—';
+      updateDistanceLine();
       return;
     }
     const meters = haversineMeters(pinState.userLat, pinState.userLng, pin.lat, pin.lng);
     document.getElementById('pin-distance').textContent = formatPinDistance(meters);
+    updateDistanceLine();
+  }
+  function updateDistanceLine(){
+    if(!pinMap || !distanceLineVisible) return;
+    const pin = getActivePin();
+    if(!pin || pinState.userLat == null || pinState.userLng == null){
+      if(distanceLine){
+        pinMap.removeLayer(distanceLine);
+        distanceLine = null;
+      }
+      return;
+    }
+    const latlngs = [
+      [pinState.userLat, pinState.userLng],
+      [pin.lat, pin.lng]
+    ];
+    if(!distanceLine){
+      distanceLine = L.polyline(latlngs, {
+        color: '#C4432C',
+        weight: 3,
+        opacity: 0.95,
+        dashArray: '10 12',
+        lineCap: 'round',
+        interactive: false
+      }).addTo(pinMap);
+    } else {
+      distanceLine.setLatLngs(latlngs);
+    }
+  }
+  function clearDistanceLine(){
+    distanceLineVisible = false;
+    if(distanceLine && pinMap){
+      pinMap.removeLayer(distanceLine);
+    }
+    distanceLine = null;
+    const btn = document.getElementById('btn-pin-locate');
+    if(btn) btn.classList.remove('active');
+  }
+  function showDistanceToPin(){
+    startPinGps();
+    const pin = getActivePin();
+    if(!pin){
+      showToast('핀을 먼저 선택하세요');
+      return;
+    }
+    distanceLineVisible = true;
+    document.getElementById('btn-pin-locate').classList.add('active');
+
+    if(pinState.userLat == null || pinState.userLng == null){
+      showToast('GPS 위치를 잡는 중입니다…');
+      return;
+    }
+
+    updatePinReadout();
+    updateDistanceLine();
+    if(pinMap){
+      const bounds = L.latLngBounds(
+        [pinState.userLat, pinState.userLng],
+        [pin.lat, pin.lng]
+      );
+      pinMap.fitBounds(bounds.pad(0.4), { maxZoom: 18, animate: true });
+    }
+    showToast('거리 표시');
   }
   function setPinMode(mode, movingPinId){
     pinState.mode = mode;
@@ -1812,11 +2301,28 @@
     const hint = document.getElementById('pin-mode-hint');
     hint.hidden = !(adding || moving);
     hint.textContent = moving
-      ? '새 위치를 지도에서 탭하세요.'
+      ? '위치 변경 모드: 지도를 탭할 때마다 핀이 이동합니다. ‘위치’를 다시 누르면 종료됩니다.'
       : '지도를 탭하면 핀이 저장됩니다. 취소하려면 다시 누르세요.';
     if(pinMap){
       pinMap.getContainer().style.cursor = (adding || moving) ? 'crosshair' : '';
     }
+  }
+  function togglePinMoveMode(pinId){
+    if(pinState.mode === 'move' && pinState.movingPinId === pinId){
+      setPinMode('idle');
+      renderPinList();
+      showToast('위치 변경 종료');
+      return;
+    }
+    pinState.activePinId = pinId;
+    savePinState();
+    setPinMode('move', pinId);
+    syncPinMarkers();
+    renderPinList();
+    updatePinReadout();
+    const pin = getActivePin();
+    if(pin && pinMap) pinMap.panTo([pin.lat, pin.lng], { animate: true });
+    showToast('위치 변경 모드');
   }
   function pinIcon(selected){
     return L.divIcon({
@@ -1885,13 +2391,14 @@
 
       const moveBtn = document.createElement('button');
       moveBtn.type = 'button';
-      moveBtn.className = 'pin-action-btn';
-      moveBtn.textContent = '위치';
+      moveBtn.className = 'pin-action-btn' +
+        (pinState.mode === 'move' && pinState.movingPinId === pin.id ? ' active' : '');
+      moveBtn.textContent = (pinState.mode === 'move' && pinState.movingPinId === pin.id)
+        ? '위치 중'
+        : '위치';
       moveBtn.addEventListener('click', e => {
         e.stopPropagation();
-        selectPin(pin.id);
-        setPinMode('move', pin.id);
-        showToast('지도에서 새 위치를 탭하세요');
+        togglePinMoveMode(pin.id);
       });
 
       const delBtn = document.createElement('button');
@@ -1912,6 +2419,11 @@
     });
   }
   function selectPin(id){
+    if(pinState.mode === 'move' && pinState.movingPinId !== id){
+      setPinMode('idle');
+    } else if(pinState.mode === 'add'){
+      setPinMode('idle');
+    }
     pinState.activePinId = id;
     savePinState();
     syncPinMarkers();
@@ -1940,13 +2452,15 @@
     pin.lat = lat;
     pin.lng = lng;
     savePinState();
-    setPinMode('idle');
+    // 위치 변경 모드 유지 — 지도 탭마다 계속 이동
     syncPinMarkers();
     renderPinList();
     updatePinReadout();
-    showToast('핀 위치가 변경되었습니다');
   }
   function deletePin(id){
+    if(pinState.mode === 'move' && pinState.movingPinId === id){
+      setPinMode('idle');
+    }
     pinState.pins = pinState.pins.filter(p => p.id !== id);
     if(pinState.activePinId === id){
       pinState.activePinId = pinState.pins[0] ? pinState.pins[0].id : null;
@@ -1990,6 +2504,11 @@
       : '';
     document.getElementById('pin-gps-status').textContent = 'GPS 수신 중' + acc;
     updatePinReadout();
+    updatePlayPinDistance();
+    if(distanceLineVisible) updateDistanceLine();
+    if(document.getElementById('hole-pin-map-overlay').classList.contains('show')){
+      updatePlayHoleMapLayers();
+    }
   }
   function startPinGps(){
     if(pinState.gpsStarted) return;
@@ -2001,7 +2520,11 @@
     }
     status.textContent = 'GPS 권한을 허용해 주세요…';
     const onOk = pos => {
+      const firstFix = pinState.userLat == null;
       setUserPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+      if(firstFix && distanceLineVisible){
+        showDistanceToPin();
+      }
     };
     const onErr = err => {
       const messages = {
@@ -2017,13 +2540,6 @@
     navigator.geolocation.watchPosition(onOk, onErr, {
       enableHighAccuracy: true, timeout: 20000, maximumAge: 2000
     });
-  }
-  function locateUserOnMap(){
-    if(pinState.userLat != null && pinState.userLng != null && pinMap){
-      pinMap.setView([pinState.userLat, pinState.userLng], Math.max(pinMap.getZoom(), 17), { animate: true });
-      return;
-    }
-    startPinGps();
   }
   function fitPinMap(){
     if(!pinMap || pinState.pins.length === 0) return;
@@ -2086,11 +2602,12 @@
     if(pinState.mode === 'add'){ setPinMode('idle'); return; }
     setPinMode('add');
   });
-  document.getElementById('btn-pin-locate').addEventListener('click', locateUserOnMap);
+  document.getElementById('btn-pin-locate').addEventListener('click', showDistanceToPin);
   document.getElementById('btn-pin-unit').addEventListener('click', () => {
     pinState.unit = pinState.unit === 'yd' ? 'm' : 'yd';
     savePinState();
     updatePinReadout();
+    updatePlayPinDistance();
   });
   document.getElementById('btn-pin-edit-close').addEventListener('click', closePinEdit);
   document.getElementById('btn-pin-edit-save').addEventListener('click', () => {
@@ -2110,8 +2627,7 @@
     const id = editingPinId;
     if(!id) return;
     closePinEdit();
-    selectPin(id);
-    setPinMode('move', id);
+    togglePinMoveMode(id);
   });
   document.getElementById('btn-pin-delete').addEventListener('click', () => {
     const id = editingPinId;
