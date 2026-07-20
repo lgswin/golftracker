@@ -641,10 +641,19 @@
   .pin-item.selected{ border-color:var(--fairway-bright); background:#EAF3EC; }
   .pin-main{
     border:0; background:transparent; color:inherit; text-align:left;
-    padding:0; font:inherit; cursor:pointer;
+    padding:0; font:inherit; cursor:pointer; min-width:0;
   }
   .pin-name{ display:block; font-weight:800; color:var(--fairway-deep); }
   .pin-meta{ display:block; margin-top:2px; font-size:11px; color:var(--ink-soft); }
+  .pin-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .pin-action-btn{
+    border:0; background:#fff; color:var(--fairway);
+    border-radius:10px; padding:8px 10px;
+    font-size:12px; font-weight:800; cursor:pointer;
+    box-shadow:var(--shadow); white-space:nowrap;
+  }
+  .pin-action-btn:active{ transform:scale(0.96); }
+  .pin-action-btn.danger{ color:var(--flag-red); background:#F7E4DE; box-shadow:none; }
   .pin-edit-btn{
     border:0; background:#fff; color:var(--fairway);
     border-radius:10px; padding:8px 10px;
@@ -834,7 +843,7 @@
     <div class="pins-panel">
       <div class="pins-actions">
         <button class="primary-btn" id="btn-pin-add">핀 추가</button>
-        <button class="ghost-btn" id="btn-pin-locate">내 위치</button>
+        <button class="ghost-btn" id="btn-pin-locate">거리계산</button>
       </div>
       <p class="pins-mode-hint" id="pin-mode-hint" hidden>지도를 탭하면 핀이 저장됩니다.</p>
       <ul id="pin-list" class="pin-list"></ul>
@@ -1854,18 +1863,51 @@
     pinState.pins.forEach(pin => {
       const li = document.createElement('li');
       li.className = 'pin-item' + (pin.id === pinState.activePinId ? ' selected' : '');
+
       const main = document.createElement('button');
       main.type = 'button';
       main.className = 'pin-main';
       main.innerHTML = '<span class="pin-name">' + escapeHtml(pin.name) + '</span>' +
         '<span class="pin-meta">' + pin.lat.toFixed(5) + ', ' + pin.lng.toFixed(5) + '</span>';
       main.addEventListener('click', () => selectPin(pin.id));
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'pin-edit-btn';
-      edit.textContent = '수정';
-      edit.addEventListener('click', () => openPinEdit(pin.id));
-      li.append(main, edit);
+
+      const actions = document.createElement('div');
+      actions.className = 'pin-actions';
+
+      const renameBtn = document.createElement('button');
+      renameBtn.type = 'button';
+      renameBtn.className = 'pin-action-btn';
+      renameBtn.textContent = '이름';
+      renameBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        openPinEdit(pin.id);
+      });
+
+      const moveBtn = document.createElement('button');
+      moveBtn.type = 'button';
+      moveBtn.className = 'pin-action-btn';
+      moveBtn.textContent = '위치';
+      moveBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        selectPin(pin.id);
+        setPinMode('move', pin.id);
+        showToast('지도에서 새 위치를 탭하세요');
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'pin-action-btn danger';
+      delBtn.textContent = '삭제';
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        askConfirm('핀 삭제', '"' + pin.name + '" 핀을 삭제할까요?', () => {
+          deletePin(pin.id);
+          showToast('삭제되었습니다');
+        });
+      });
+
+      actions.append(renameBtn, moveBtn, delBtn);
+      li.append(main, actions);
       list.appendChild(li);
     });
   }
