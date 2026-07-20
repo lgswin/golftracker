@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Cursor / local agent
+.cursor/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Node (if added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# Python local servers / tooling
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs & temp
+*.log
+tmp/
+temp/
+*.tmp

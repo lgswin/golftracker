@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1F3D2B">
 <title>골프 스코어</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3D2B'/%3E%3Ccircle cx='50' cy='40' r='16' fill='%23F7F3E8'/%3E%3Crect x='47' y='40' width='4' height='38' fill='%23F7F3E8'/%3E%3Cpath d='M51 42 L74 50 L51 58 Z' fill='%23C4432C'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   :root{
     --fairway-deep:#1F3D2B;
@@ -555,6 +556,129 @@
     .stroke-display{ width:220px; height:220px; }
     .stroke-display .val{ font-size:92px; }
   }
+
+  /* ---------- Pin yardage ---------- */
+  .topbar-actions{ display:flex; gap:8px; align-items:center; }
+  .unit-chip{
+    background:rgba(247,243,232,0.12);
+    border:1px solid rgba(247,243,232,0.28);
+    color:var(--cream);
+    border-radius:20px;
+    padding:8px 12px;
+    font-size:13px; font-weight:800;
+    cursor:pointer;
+  }
+  .unit-chip:active{ background:rgba(247,243,232,0.24); }
+  .pins-readout{
+    background:var(--fairway-deep);
+    color:var(--cream);
+    text-align:center;
+    padding:4px 16px 14px;
+    flex-shrink:0;
+  }
+  .pins-readout .label{ margin:0; font-size:13px; opacity:0.85; font-weight:600; }
+  .pins-readout .value{
+    margin:2px 0 0;
+    font-size:clamp(2.6rem, 11vw, 3.4rem);
+    font-weight:800;
+    line-height:1;
+    letter-spacing:-0.03em;
+  }
+  .pins-readout .hint{ margin:6px 0 0; font-size:11px; opacity:0.65; }
+  #pin-map{
+    flex:1;
+    min-height:0;
+    background:#d8e5d9;
+    z-index:1;
+  }
+  .pins-panel{
+    background:#fff;
+    border-top:1px solid var(--line);
+    box-shadow:0 -6px 20px rgba(24,32,24,0.08);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    max-height:36vh;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    flex-shrink:0;
+    z-index:2;
+  }
+  .pins-actions{ display:flex; gap:8px; }
+  .pins-actions .primary-btn,
+  .pins-actions .ghost-btn{
+    margin:0; flex:1; padding:12px 14px; font-size:15px;
+  }
+  .pins-actions .ghost-btn{
+    border:2px solid var(--line);
+    background:var(--cream);
+    color:var(--fairway-deep);
+    font-weight:800;
+    border-radius:14px;
+  }
+  .pins-actions .primary-btn.active{
+    background:var(--gold);
+  }
+  .pins-mode-hint{
+    margin:0;
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .pin-list{
+    list-style:none; margin:0; padding:0;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .pin-list:empty::after{
+    content:"저장된 핀이 없습니다. ‘핀 추가’로 지도에 탭하세요.";
+    display:block; font-size:13px; color:var(--ink-soft); padding:4px 2px 8px;
+  }
+  .pin-item{
+    display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center;
+    padding:12px 14px; border-radius:14px;
+    background:var(--cream); border:2px solid transparent;
+  }
+  .pin-item.selected{ border-color:var(--fairway-bright); background:#EAF3EC; }
+  .pin-main{
+    border:0; background:transparent; color:inherit; text-align:left;
+    padding:0; font:inherit; cursor:pointer;
+  }
+  .pin-name{ display:block; font-weight:800; color:var(--fairway-deep); }
+  .pin-meta{ display:block; margin-top:2px; font-size:11px; color:var(--ink-soft); }
+  .pin-edit-btn{
+    border:0; background:#fff; color:var(--fairway);
+    border-radius:10px; padding:8px 10px;
+    font-size:12px; font-weight:800; cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+  .pin-map-flag{
+    width:22px; height:28px; margin-left:-4px; margin-top:-28px;
+  }
+  .pin-map-flag span{
+    display:block; width:14px; height:10px; background:var(--flag-red);
+    border-radius:1px 3px 3px 1px; margin-left:3px;
+  }
+  .pin-map-flag::after{
+    content:""; display:block; width:2px; height:18px;
+    background:#F7F3E8; margin-left:3px;
+  }
+  .user-dot{
+    width:16px; height:16px; margin-left:-8px; margin-top:-8px;
+    border-radius:50%; background:#3B82F6; border:2px solid #fff;
+    box-shadow:0 0 0 6px rgba(59,130,246,0.28);
+  }
+  .leaflet-control-attribution{
+    font-size:9px !important;
+    background:rgba(255,255,255,0.7) !important;
+  }
+  .pin-edit-actions{ display:flex; gap:8px; margin-top:8px; }
+  .pin-edit-actions .ghost-btn,
+  .pin-edit-actions .danger-btn{
+    flex:1; margin:0; padding:12px; border-radius:14px; font-weight:800; font-size:14px;
+  }
+  .danger-btn{
+    border:none; background:#F7E4DE; color:var(--flag-red); cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -564,6 +688,9 @@
   <div class="screen active" id="screen-home">
     <div class="topbar">
       <div class="brand">GreenCount<small>By GunsuLee</small></div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btn-open-pins" title="핀 거리" aria-label="핀 거리">⛳</button>
+      </div>
     </div>
     <div id="home-list"></div>
     <button class="fab" id="btn-new-round">＋ 새 라운드</button>
@@ -691,6 +818,29 @@
     <div class="detail-table" id="detail-table"></div>
   </div>
 
+  <!-- ===================== PINS (yardage) ===================== -->
+  <div class="screen" id="screen-pins">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-pins-back">‹</button>
+      <div class="brand" style="font-size:18px">핀 거리</div>
+      <button class="unit-chip" id="btn-pin-unit" aria-label="단위 전환">yd</button>
+    </div>
+    <section class="pins-readout" aria-live="polite">
+      <p class="label" id="pin-active-label">핀을 선택하거나 지도에 추가하세요</p>
+      <p class="value" id="pin-distance">—</p>
+      <p class="hint" id="pin-gps-status">GPS 준비 중…</p>
+    </section>
+    <div id="pin-map" role="application" aria-label="골프장 지도"></div>
+    <div class="pins-panel">
+      <div class="pins-actions">
+        <button class="primary-btn" id="btn-pin-add">핀 추가</button>
+        <button class="ghost-btn" id="btn-pin-locate">내 위치</button>
+      </div>
+      <p class="pins-mode-hint" id="pin-mode-hint" hidden>지도를 탭하면 핀이 저장됩니다.</p>
+      <ul id="pin-list" class="pin-list"></ul>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -755,12 +905,34 @@
   </div>
 </div>
 
+<div class="sheet-overlay" id="pin-edit-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="sheet-close-center" id="btn-pin-edit-close">✕</button>
+      <div class="sheet-title">핀 수정</div>
+    </div>
+    <div class="sheet-body">
+      <div class="field-label" style="margin-top:0;">이름</div>
+      <input class="text-input" id="input-pin-name" placeholder="예) 홀 1" maxlength="40">
+      <p style="font-size:12px; color:var(--ink-soft); margin:10px 0 0; line-height:1.5;">위치를 바꾸려면 ‘위치 이동’ 후 지도를 탭하세요.</p>
+      <div class="pin-edit-actions">
+        <button class="ghost-btn" id="btn-pin-move" style="border:2px solid var(--line); background:var(--cream); color:var(--fairway-deep);">위치 이동</button>
+        <button class="danger-btn" id="btn-pin-delete">삭제</button>
+      </div>
+      <button class="primary-btn" id="btn-pin-edit-save" style="margin-top:12px;">저장</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function(){
   "use strict";
   const STORAGE_KEY = "greencount_rounds_v1";
   const TEMPLATES_KEY = "greencount_templates_v1";
   const NINE_TEMPLATES_KEY = "greencount_nine_templates_v1";
+  const PINS_KEY = "greencount_pins_v1";
+  const YARDS_PER_METER = 1.0936133;
 
   /* ---------------- storage ---------------- */
   function loadRounds(){
@@ -1546,7 +1718,372 @@
 
   /* editing an already-finished round: opens the play screen; finishing again keeps it saved as finished */
 
+  /* ---------------- PIN YARDAGE ---------------- */
+  const pinState = {
+    pins: [],
+    activePinId: null,
+    unit: 'yd',
+    mode: 'idle', // idle | add | move
+    movingPinId: null,
+    userLat: null,
+    userLng: null,
+    gpsStarted: false,
+    mapReady: false
+  };
+  let pinMap = null;
+  let pinLayer = null;
+  let userMarker = null;
+  const pinMarkers = new Map();
+  let editingPinId = null;
+
+  function loadPinState(){
+    try{
+      const raw = localStorage.getItem(PINS_KEY);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      if(Array.isArray(data.pins)) pinState.pins = data.pins;
+      if(data.activePinId) pinState.activePinId = data.activePinId;
+      if(data.unit === 'm' || data.unit === 'yd') pinState.unit = data.unit;
+    }catch(e){ /* ignore */ }
+  }
+  function savePinState(){
+    localStorage.setItem(PINS_KEY, JSON.stringify({
+      pins: pinState.pins,
+      activePinId: pinState.activePinId,
+      unit: pinState.unit
+    }));
+  }
+  function haversineMeters(lat1, lng1, lat2, lng2){
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat/2)**2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+  function formatPinDistance(meters){
+    if(pinState.unit === 'm') return Math.round(meters) + ' m';
+    return Math.round(meters * YARDS_PER_METER) + ' yd';
+  }
+  function getActivePin(){
+    return pinState.pins.find(p => p.id === pinState.activePinId) || null;
+  }
+  function escapeHtml(text){
+    return String(text)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+  function updatePinReadout(){
+    const pin = getActivePin();
+    document.getElementById('btn-pin-unit').textContent = pinState.unit;
+    if(!pin){
+      document.getElementById('pin-active-label').textContent = '핀을 선택하거나 지도에 추가하세요';
+      document.getElementById('pin-distance').textContent = '—';
+      return;
+    }
+    document.getElementById('pin-active-label').textContent = pin.name;
+    if(pinState.userLat == null || pinState.userLng == null){
+      document.getElementById('pin-distance').textContent = '—';
+      return;
+    }
+    const meters = haversineMeters(pinState.userLat, pinState.userLng, pin.lat, pin.lng);
+    document.getElementById('pin-distance').textContent = formatPinDistance(meters);
+  }
+  function setPinMode(mode, movingPinId){
+    pinState.mode = mode;
+    pinState.movingPinId = movingPinId || null;
+    const adding = mode === 'add';
+    const moving = mode === 'move';
+    const addBtn = document.getElementById('btn-pin-add');
+    addBtn.classList.toggle('active', adding);
+    addBtn.textContent = adding ? '추가 취소' : '핀 추가';
+    const hint = document.getElementById('pin-mode-hint');
+    hint.hidden = !(adding || moving);
+    hint.textContent = moving
+      ? '새 위치를 지도에서 탭하세요.'
+      : '지도를 탭하면 핀이 저장됩니다. 취소하려면 다시 누르세요.';
+    if(pinMap){
+      pinMap.getContainer().style.cursor = (adding || moving) ? 'crosshair' : '';
+    }
+  }
+  function pinIcon(selected){
+    return L.divIcon({
+      className: '',
+      html: '<div class="pin-map-flag" style="opacity:' + (selected ? 1 : 0.75) + '"><span></span></div>',
+      iconSize: [22, 28],
+      iconAnchor: [4, 28]
+    });
+  }
+  function syncPinMarkers(){
+    if(!pinLayer) return;
+    const ids = new Set(pinState.pins.map(p => p.id));
+    for(const [id, marker] of pinMarkers){
+      if(!ids.has(id)){
+        pinLayer.removeLayer(marker);
+        pinMarkers.delete(id);
+      }
+    }
+    pinState.pins.forEach(pin => {
+      const selected = pin.id === pinState.activePinId;
+      let marker = pinMarkers.get(pin.id);
+      if(!marker){
+        marker = L.marker([pin.lat, pin.lng], {
+          icon: pinIcon(selected),
+          title: pin.name
+        });
+        marker.on('click', e => {
+          L.DomEvent.stopPropagation(e);
+          if(pinState.mode !== 'idle') return;
+          selectPin(pin.id);
+        });
+        marker.addTo(pinLayer);
+        pinMarkers.set(pin.id, marker);
+      } else {
+        marker.setLatLng([pin.lat, pin.lng]);
+        marker.setIcon(pinIcon(selected));
+        marker.options.title = pin.name;
+      }
+    });
+  }
+  function renderPinList(){
+    const list = document.getElementById('pin-list');
+    list.innerHTML = '';
+    pinState.pins.forEach(pin => {
+      const li = document.createElement('li');
+      li.className = 'pin-item' + (pin.id === pinState.activePinId ? ' selected' : '');
+      const main = document.createElement('button');
+      main.type = 'button';
+      main.className = 'pin-main';
+      main.innerHTML = '<span class="pin-name">' + escapeHtml(pin.name) + '</span>' +
+        '<span class="pin-meta">' + pin.lat.toFixed(5) + ', ' + pin.lng.toFixed(5) + '</span>';
+      main.addEventListener('click', () => selectPin(pin.id));
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'pin-edit-btn';
+      edit.textContent = '수정';
+      edit.addEventListener('click', () => openPinEdit(pin.id));
+      li.append(main, edit);
+      list.appendChild(li);
+    });
+  }
+  function selectPin(id){
+    pinState.activePinId = id;
+    savePinState();
+    syncPinMarkers();
+    renderPinList();
+    updatePinReadout();
+    const pin = getActivePin();
+    if(pin && pinMap) pinMap.panTo([pin.lat, pin.lng], { animate: true });
+  }
+  function nextPinName(){
+    return '홀 ' + (pinState.pins.length + 1);
+  }
+  function addPin(lat, lng){
+    const pin = { id: uid(), name: nextPinName(), lat, lng };
+    pinState.pins.push(pin);
+    pinState.activePinId = pin.id;
+    savePinState();
+    setPinMode('idle');
+    syncPinMarkers();
+    renderPinList();
+    updatePinReadout();
+    showToast('핀이 저장되었습니다');
+  }
+  function movePin(id, lat, lng){
+    const pin = pinState.pins.find(p => p.id === id);
+    if(!pin) return;
+    pin.lat = lat;
+    pin.lng = lng;
+    savePinState();
+    setPinMode('idle');
+    syncPinMarkers();
+    renderPinList();
+    updatePinReadout();
+    showToast('핀 위치가 변경되었습니다');
+  }
+  function deletePin(id){
+    pinState.pins = pinState.pins.filter(p => p.id !== id);
+    if(pinState.activePinId === id){
+      pinState.activePinId = pinState.pins[0] ? pinState.pins[0].id : null;
+    }
+    savePinState();
+    syncPinMarkers();
+    renderPinList();
+    updatePinReadout();
+  }
+  function openPinEdit(id){
+    const pin = pinState.pins.find(p => p.id === id);
+    if(!pin) return;
+    editingPinId = id;
+    document.getElementById('input-pin-name').value = pin.name;
+    document.getElementById('pin-edit-overlay').classList.add('show');
+  }
+  function closePinEdit(){
+    document.getElementById('pin-edit-overlay').classList.remove('show');
+    editingPinId = null;
+  }
+  function setUserPosition(lat, lng, accuracy){
+    pinState.userLat = lat;
+    pinState.userLng = lng;
+    if(pinMap){
+      if(!userMarker){
+        userMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="user-dot"></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          }),
+          zIndexOffset: 1000
+        }).addTo(pinMap);
+      } else {
+        userMarker.setLatLng([lat, lng]);
+      }
+    }
+    const acc = (typeof accuracy === 'number' && isFinite(accuracy))
+      ? (' ±' + Math.round(accuracy) + 'm')
+      : '';
+    document.getElementById('pin-gps-status').textContent = 'GPS 수신 중' + acc;
+    updatePinReadout();
+  }
+  function startPinGps(){
+    if(pinState.gpsStarted) return;
+    pinState.gpsStarted = true;
+    const status = document.getElementById('pin-gps-status');
+    if(!navigator.geolocation){
+      status.textContent = '이 기기에서 GPS를 사용할 수 없습니다';
+      return;
+    }
+    status.textContent = 'GPS 권한을 허용해 주세요…';
+    const onOk = pos => {
+      setUserPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+    };
+    const onErr = err => {
+      const messages = {
+        1: '위치 권한이 거부되었습니다. 설정에서 위치 접근을 허용하세요.',
+        2: '위치를 확인할 수 없습니다.',
+        3: '위치 요청이 시간 초과되었습니다.'
+      };
+      status.textContent = messages[err.code] || 'GPS 오류';
+    };
+    navigator.geolocation.getCurrentPosition(onOk, onErr, {
+      enableHighAccuracy: true, timeout: 15000, maximumAge: 5000
+    });
+    navigator.geolocation.watchPosition(onOk, onErr, {
+      enableHighAccuracy: true, timeout: 20000, maximumAge: 2000
+    });
+  }
+  function locateUserOnMap(){
+    if(pinState.userLat != null && pinState.userLng != null && pinMap){
+      pinMap.setView([pinState.userLat, pinState.userLng], Math.max(pinMap.getZoom(), 17), { animate: true });
+      return;
+    }
+    startPinGps();
+  }
+  function fitPinMap(){
+    if(!pinMap || pinState.pins.length === 0) return;
+    const bounds = L.latLngBounds(pinState.pins.map(p => [p.lat, p.lng]));
+    if(pinState.userLat != null) bounds.extend([pinState.userLat, pinState.userLng]);
+    pinMap.fitBounds(bounds.pad(0.35), { maxZoom: 18 });
+  }
+  function initPinMap(){
+    if(pinState.mapReady || typeof L === 'undefined') return;
+    pinMap = L.map('pin-map', {
+      zoomControl: false,
+      attributionControl: true
+    }).setView([37.5665, 126.978], 16);
+    L.control.zoom({ position: 'topright' }).addTo(pinMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+    }).addTo(pinMap);
+    pinLayer = L.layerGroup().addTo(pinMap);
+    pinMap.on('click', e => {
+      if(pinState.mode === 'add'){
+        addPin(e.latlng.lat, e.latlng.lng);
+        return;
+      }
+      if(pinState.mode === 'move' && pinState.movingPinId){
+        movePin(pinState.movingPinId, e.latlng.lat, e.latlng.lng);
+      }
+    });
+    pinState.mapReady = true;
+    syncPinMarkers();
+    if(pinState.userLat != null){
+      setUserPosition(pinState.userLat, pinState.userLng);
+    }
+  }
+  function openPins(){
+    loadPinState();
+    renderPinList();
+    updatePinReadout();
+    showScreen('screen-pins');
+    initPinMap();
+    syncPinMarkers();
+    startPinGps();
+    setTimeout(() => {
+      if(!pinMap) return;
+      pinMap.invalidateSize();
+      if(pinState.pins.length) fitPinMap();
+      else if(pinState.userLat != null){
+        pinMap.setView([pinState.userLat, pinState.userLng], 17);
+      }
+    }, 80);
+  }
+
+  document.getElementById('btn-open-pins').addEventListener('click', openPins);
+  document.getElementById('btn-pins-back').addEventListener('click', () => {
+    setPinMode('idle');
+    showScreen('screen-home');
+    renderHome();
+  });
+  document.getElementById('btn-pin-add').addEventListener('click', () => {
+    if(pinState.mode === 'add'){ setPinMode('idle'); return; }
+    setPinMode('add');
+  });
+  document.getElementById('btn-pin-locate').addEventListener('click', locateUserOnMap);
+  document.getElementById('btn-pin-unit').addEventListener('click', () => {
+    pinState.unit = pinState.unit === 'yd' ? 'm' : 'yd';
+    savePinState();
+    updatePinReadout();
+  });
+  document.getElementById('btn-pin-edit-close').addEventListener('click', closePinEdit);
+  document.getElementById('btn-pin-edit-save').addEventListener('click', () => {
+    const pin = pinState.pins.find(p => p.id === editingPinId);
+    if(!pin){ closePinEdit(); return; }
+    const name = document.getElementById('input-pin-name').value.trim();
+    if(!name){ showToast('이름을 입력하세요'); return; }
+    pin.name = name;
+    savePinState();
+    syncPinMarkers();
+    renderPinList();
+    updatePinReadout();
+    closePinEdit();
+    showToast('저장되었습니다');
+  });
+  document.getElementById('btn-pin-move').addEventListener('click', () => {
+    const id = editingPinId;
+    if(!id) return;
+    closePinEdit();
+    selectPin(id);
+    setPinMode('move', id);
+  });
+  document.getElementById('btn-pin-delete').addEventListener('click', () => {
+    const id = editingPinId;
+    const pin = pinState.pins.find(p => p.id === id);
+    if(!pin) return;
+    askConfirm('핀 삭제', '"' + pin.name + '" 핀을 삭제할까요?', () => {
+      deletePin(id);
+      closePinEdit();
+      showToast('삭제되었습니다');
+    });
+  });
+
   /* ---------------- init ---------------- */
+  loadPinState();
   renderHome();
 })();
 </script>

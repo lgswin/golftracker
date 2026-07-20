@@ -2,7 +2,7 @@
 // 처음 온라인 상태로 페이지를 열면 그 응답을 캐시에 저장하고,
 // 이후에는(오프라인이어도) 캐시된 버전을 우선 보여줍니다.
 
-const CACHE_NAME = 'greencount-cache-v1';
+const CACHE_NAME = 'greencount-cache-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
