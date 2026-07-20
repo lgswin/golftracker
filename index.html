@@ -690,8 +690,15 @@
     font-size:12px; font-weight:800; cursor:pointer;
     box-shadow:var(--shadow);
   }
+  .pin-div-icon,
+  .user-div-icon{
+    background:transparent !important;
+    border:none !important;
+  }
   .pin-map-flag{
-    width:22px; height:28px; margin-left:-4px; margin-top:-28px;
+    width:22px;
+    height:28px;
+    position:relative;
   }
   .pin-map-flag span{
     display:block; width:14px; height:10px; background:var(--flag-red);
@@ -702,7 +709,7 @@
     background:#F7F3E8; margin-left:3px;
   }
   .user-dot{
-    width:16px; height:16px; margin-left:-8px; margin-top:-8px;
+    width:16px; height:16px;
     border-radius:50%; background:#3B82F6; border:2px solid #fff;
     box-shadow:0 0 0 6px rgba(59,130,246,0.28);
   }
@@ -1810,7 +1817,7 @@
       if(!playHolePinMarker){
         playHolePinMarker = L.marker([holePin.lat, holePin.lng], {
           icon: L.divIcon({
-            className: '',
+            className: 'pin-div-icon',
             html: '<div class="pin-map-flag"><span></span></div>',
             iconSize: [22, 28],
             iconAnchor: [4, 28]
@@ -1828,7 +1835,7 @@
       if(!playUserMarker){
         playUserMarker = L.marker([pinState.userLat, pinState.userLng], {
           icon: L.divIcon({
-            className: '',
+            className: 'user-div-icon',
             html: '<div class="user-dot"></div>',
             iconSize: [16, 16],
             iconAnchor: [8, 8]
@@ -2209,7 +2216,7 @@
   }
   function pinIcon(selected){
     return L.divIcon({
-      className: '',
+      className: 'pin-div-icon',
       html: '<div class="pin-map-flag" style="opacity:' + (selected ? 1 : 0.75) + '"><span></span></div>',
       iconSize: [22, 28],
       iconAnchor: [4, 28]
@@ -2371,7 +2378,7 @@
       if(!userMarker){
         userMarker = L.marker([lat, lng], {
           icon: L.divIcon({
-            className: '',
+            className: 'user-div-icon',
             html: '<div class="user-dot"></div>',
             iconSize: [16, 16],
             iconAnchor: [8, 8]
