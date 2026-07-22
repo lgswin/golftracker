@@ -609,6 +609,68 @@
     letter-spacing:-0.03em;
   }
   .pins-readout .hint{ margin:6px 0 0; font-size:11px; opacity:0.65; }
+  .club-recommend{
+    margin:10px auto 0;
+    max-width:280px;
+    padding:10px 14px;
+    border-radius:14px;
+    background:rgba(247,243,232,0.12);
+    border:1px solid rgba(247,243,232,0.2);
+    text-align:center;
+  }
+  .club-recommend .club-name{
+    margin:0;
+    font-size:22px;
+    font-weight:800;
+    color:var(--gold);
+    letter-spacing:0.02em;
+  }
+  .club-recommend .club-sub{
+    margin:4px 0 0;
+    font-size:12px;
+    opacity:0.8;
+    font-weight:600;
+  }
+  .club-recommend.hidden{ display:none; }
+  .settings-body{ flex:1; min-height:0; overflow-y:auto; padding:20px 20px 40px; -webkit-overflow-scrolling:touch; }
+  .settings-card{
+    background:#fff;
+    border-radius:18px;
+    padding:18px 16px;
+    box-shadow:var(--shadow);
+    margin-bottom:16px;
+  }
+  .settings-card h3{
+    margin:0 0 12px;
+    font-size:14px;
+    font-weight:800;
+    color:var(--ink-soft);
+    letter-spacing:0.5px;
+  }
+  .seg-toggle{ display:flex; gap:8px; }
+  .seg-btn{
+    flex:1;
+    border:2px solid var(--line);
+    background:#fff;
+    border-radius:14px;
+    padding:14px 10px;
+    font-size:15px;
+    font-weight:800;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .seg-btn.active{
+    border-color:var(--fairway-bright);
+    background:#EAF3EC;
+    color:var(--fairway-deep);
+    box-shadow:0 0 0 3px rgba(74,139,92,0.12);
+  }
+  .settings-note{
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    margin:0;
+  }
   #pin-map{
     flex:1;
     min-height:0;
@@ -735,11 +797,39 @@
     <div class="topbar">
       <div class="brand">GreenCount<small>By GunsuLee</small></div>
       <div class="topbar-actions">
+        <button class="icon-btn" id="btn-open-settings" title="설정" aria-label="설정">⚙</button>
         <button class="icon-btn" id="btn-open-pins" title="핀 거리" aria-label="핀 거리">⛳</button>
       </div>
     </div>
     <div id="home-list"></div>
     <button class="fab" id="btn-new-round">＋ 새 라운드</button>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div class="screen" id="screen-settings">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-settings-back">‹</button>
+      <div class="brand" style="font-size:18px">기본 설정</div>
+      <div style="width:40px"></div>
+    </div>
+    <div class="settings-body">
+      <div class="settings-card">
+        <h3>성별</h3>
+        <div class="seg-toggle" id="settings-gender">
+          <button type="button" class="seg-btn active" data-gender="male">남자</button>
+          <button type="button" class="seg-btn" data-gender="female">여자</button>
+        </div>
+      </div>
+      <div class="settings-card">
+        <h3>수준</h3>
+        <div class="seg-toggle" id="settings-skill">
+          <button type="button" class="seg-btn" data-skill="beginner">초보</button>
+          <button type="button" class="seg-btn active" data-skill="intermediate">중수</button>
+          <button type="button" class="seg-btn" data-skill="advanced">고수</button>
+        </div>
+      </div>
+      <p class="settings-note">핀 거리 계산 시 성별·수준에 맞는 표준 비거리표로 추천 클럽을 보여줍니다. 거리는 미터 기준 표와 비교합니다.</p>
+    </div>
   </div>
 
   <!-- ===================== SETUP (new round) ===================== -->
@@ -857,6 +947,10 @@
     <section class="pins-readout" aria-live="polite">
       <p class="label" id="hole-pin-label">지도를 탭해 핀을 저장하세요</p>
       <p class="value" id="hole-pin-distance">—</p>
+      <div class="club-recommend hidden" id="hole-club-recommend">
+        <p class="club-name" id="hole-club-name">—</p>
+        <p class="club-sub" id="hole-club-sub"></p>
+      </div>
       <p class="hint" id="hole-pin-gps-status">GPS 준비 중…</p>
     </section>
     <div id="play-hole-pin-map" role="application" aria-label="홀 핀 지도"></div>
@@ -900,6 +994,10 @@
     <section class="pins-readout" aria-live="polite">
       <p class="label" id="pin-active-label">핀을 선택하거나 지도에 추가하세요</p>
       <p class="value" id="pin-distance">—</p>
+      <div class="club-recommend hidden" id="pin-club-recommend">
+        <p class="club-name" id="pin-club-name">—</p>
+        <p class="club-sub" id="pin-club-sub"></p>
+      </div>
       <p class="hint" id="pin-gps-status">GPS 준비 중…</p>
     </section>
     <div id="pin-map" role="application" aria-label="골프장 지도"></div>
@@ -1004,7 +1102,128 @@
   const TEMPLATES_KEY = "greencount_templates_v1";
   const NINE_TEMPLATES_KEY = "greencount_nine_templates_v1";
   const PINS_KEY = "greencount_pins_v1";
+  const PROFILE_KEY = "greencount_profile_v1";
   const YARDS_PER_METER = 1.0936133;
+
+  /* 표준 클럽 비거리(m) — 첨부 표 기준 */
+  const CLUB_DISTANCES = {
+    male: {
+      beginner: [
+        { name: 'Driver', m: 183 }, { name: '3 Wood', m: 165 }, { name: '5 Wood', m: 155 },
+        { name: '2 Iron', m: 155 }, { name: '3 Iron', m: 146 }, { name: '4 Iron', m: 137 },
+        { name: '5 Iron', m: 128 }, { name: '6 Iron', m: 119 }, { name: '7 Iron', m: 110 },
+        { name: '8 Iron', m: 101 }, { name: '9 Iron', m: 87 }, { name: 'Pitch W', m: 73 },
+        { name: 'Sand W', m: 55 }
+      ],
+      intermediate: [
+        { name: 'Driver', m: 210 }, { name: '3 Wood', m: 197 }, { name: '5 Wood', m: 178 },
+        { name: '2 Iron', m: 178 }, { name: '3 Iron', m: 165 }, { name: '4 Iron', m: 155 },
+        { name: '5 Iron', m: 146 }, { name: '6 Iron', m: 137 }, { name: '7 Iron', m: 128 },
+        { name: '8 Iron', m: 119 }, { name: '9 Iron', m: 105 }, { name: 'Pitch W', m: 96 },
+        { name: 'Sand W', m: 73 }
+      ],
+      advanced: [
+        { name: 'Driver', m: 238 }, { name: '3 Wood', m: 215 }, { name: '5 Wood', m: 192 },
+        { name: '2 Iron', m: 192 }, { name: '3 Iron', m: 183 }, { name: '4 Iron', m: 169 },
+        { name: '5 Iron', m: 155 }, { name: '6 Iron', m: 146 }, { name: '7 Iron', m: 137 },
+        { name: '8 Iron', m: 128 }, { name: '9 Iron', m: 119 }, { name: 'Pitch W', m: 110 },
+        { name: 'Sand W', m: 91 }
+      ]
+    },
+    female: {
+      beginner: [
+        { name: 'Driver', m: 137 }, { name: '3 Wood', m: 114 }, { name: '5 Wood', m: 96 },
+        { name: '2 Iron', m: 96 }, { name: '3 Iron', m: 91 }, { name: '4 Iron', m: 82 },
+        { name: '5 Iron', m: 73 }, { name: '6 Iron', m: 64 }, { name: '7 Iron', m: 59 },
+        { name: '8 Iron', m: 55 }, { name: '9 Iron', m: 50 }, { name: 'Pitch W', m: 46 },
+        { name: 'Sand W', m: 37 }
+      ],
+      intermediate: [
+        { name: 'Driver', m: 160 }, { name: '3 Wood', m: 137 }, { name: '5 Wood', m: 123 },
+        { name: '2 Iron', m: 123 }, { name: '3 Iron', m: 114 }, { name: '4 Iron', m: 110 },
+        { name: '5 Iron', m: 101 }, { name: '6 Iron', m: 91 }, { name: '7 Iron', m: 82 },
+        { name: '8 Iron', m: 73 }, { name: '9 Iron', m: 64 }, { name: 'Pitch W', m: 55 },
+        { name: 'Sand W', m: 46 }
+      ],
+      advanced: [
+        { name: 'Driver', m: 183 }, { name: '3 Wood', m: 165 }, { name: '5 Wood', m: 155 },
+        { name: '2 Iron', m: 155 }, { name: '3 Iron', m: 146 }, { name: '4 Iron', m: 137 },
+        { name: '5 Iron', m: 128 }, { name: '6 Iron', m: 119 }, { name: '7 Iron', m: 110 },
+        { name: '8 Iron', m: 101 }, { name: '9 Iron', m: 87 }, { name: 'Pitch W', m: 73 },
+        { name: 'Sand W', m: 55 }
+      ]
+    }
+  };
+  const GENDER_LABEL = { male: '남자', female: '여자' };
+  const SKILL_LABEL = { beginner: '초보', intermediate: '중수', advanced: '고수' };
+
+  function defaultProfile(){
+    return { gender: 'male', skill: 'intermediate' };
+  }
+  function loadProfile(){
+    try{
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if(!raw) return defaultProfile();
+      const data = JSON.parse(raw);
+      const gender = (data.gender === 'female') ? 'female' : 'male';
+      const skill = ['beginner','intermediate','advanced'].includes(data.skill) ? data.skill : 'intermediate';
+      return { gender, skill };
+    }catch(e){ return defaultProfile(); }
+  }
+  function saveProfile(profile){
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  }
+  let playerProfile = loadProfile();
+
+  function isIronClub(name){
+    return /Iron|Pitch W|Sand W/.test(name);
+  }
+  /** 핀까지 거리(m)에 맞는 클럽 추천 — 도달 가능 중 가장 짧은 클럽, 동거리면 아이언 우선 */
+  function recommendClub(meters){
+    if(typeof meters !== 'number' || !isFinite(meters) || meters < 0) return null;
+    const list = CLUB_DISTANCES[playerProfile.gender][playerProfile.skill];
+    if(!list || !list.length) return null;
+
+    const reachable = list.filter(c => c.m >= meters);
+    let pick;
+    if(reachable.length){
+      // 리스트는 긴 클럽→짧은 클럽 순이므로, 도달 가능 중 마지막이 가장 짧은 클럽
+      pick = reachable[reachable.length - 1];
+      // 같은 비거리 클럽이 여러 개면(5 Wood / 2 Iron) 아이언 우선
+      const same = reachable.filter(c => c.m === pick.m);
+      if(same.length > 1){
+        const iron = same.find(c => isIronClub(c.name));
+        if(iron) pick = iron;
+      }
+    } else {
+      pick = list[0]; // 표보다 멀면 가장 긴 클럽
+    }
+    return {
+      name: pick.name,
+      clubMeters: pick.m,
+      gender: playerProfile.gender,
+      skill: playerProfile.skill
+    };
+  }
+  function setClubRecommendUI(prefix, meters){
+    const box = document.getElementById(prefix + '-club-recommend');
+    const nameEl = document.getElementById(prefix + '-club-name');
+    const subEl = document.getElementById(prefix + '-club-sub');
+    if(!box || !nameEl || !subEl) return;
+    const rec = (typeof meters === 'number' && isFinite(meters)) ? recommendClub(meters) : null;
+    if(!rec){
+      box.classList.add('hidden');
+      return;
+    }
+    box.classList.remove('hidden');
+    nameEl.textContent = rec.name;
+    subEl.textContent = GENDER_LABEL[rec.gender] + ' · ' + SKILL_LABEL[rec.skill] +
+      ' 기준 ' + rec.clubMeters + 'm';
+  }
+  function clearClubRecommendUI(prefix){
+    const box = document.getElementById(prefix + '-club-recommend');
+    if(box) box.classList.add('hidden');
+  }
 
   /* ---------------- storage ---------------- */
   function loadRounds(){
@@ -1623,15 +1842,18 @@
     if(!holePin){
       label.textContent = '지도를 탭해 이 홀 핀을 저장하세요';
       distEl.textContent = '—';
+      clearClubRecommendUI('hole');
       return;
     }
     label.textContent = holePin.name || ('홀 ' + (currentHole + 1));
     if(pinState.userLat == null || pinState.userLng == null){
       distEl.textContent = '—';
+      clearClubRecommendUI('hole');
       return;
     }
     const meters = haversineMeters(pinState.userLat, pinState.userLng, holePin.lat, holePin.lng);
     distEl.textContent = formatPinDistance(meters);
+    setClubRecommendUI('hole', meters);
   }
 
   function setHolePinAddMode(on){
@@ -2105,17 +2327,20 @@
     if(!pin){
       document.getElementById('pin-active-label').textContent = '핀을 선택하거나 지도에 추가하세요';
       document.getElementById('pin-distance').textContent = '—';
+      clearClubRecommendUI('pin');
       updateDistanceLine();
       return;
     }
     document.getElementById('pin-active-label').textContent = pin.name;
     if(pinState.userLat == null || pinState.userLng == null){
       document.getElementById('pin-distance').textContent = '—';
+      clearClubRecommendUI('pin');
       updateDistanceLine();
       return;
     }
     const meters = haversineMeters(pinState.userLat, pinState.userLng, pin.lat, pin.lng);
     document.getElementById('pin-distance').textContent = formatPinDistance(meters);
+    setClubRecommendUI('pin', meters);
     updateDistanceLine();
   }
   function updateDistanceLine(){
@@ -2490,6 +2715,45 @@
     showScreen('screen-home');
     renderHome();
   });
+
+  function renderSettings(){
+    document.querySelectorAll('#settings-gender .seg-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.gender === playerProfile.gender);
+    });
+    document.querySelectorAll('#settings-skill .seg-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.skill === playerProfile.skill);
+    });
+  }
+  function openSettings(){
+    renderSettings();
+    showScreen('screen-settings');
+  }
+  document.getElementById('btn-open-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-settings-back').addEventListener('click', () => {
+    showScreen('screen-home');
+    renderHome();
+  });
+  document.querySelectorAll('#settings-gender .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playerProfile.gender = btn.dataset.gender;
+      saveProfile(playerProfile);
+      renderSettings();
+      updatePinReadout();
+      updateHolePinReadout();
+      showToast(GENDER_LABEL[playerProfile.gender] + '로 설정');
+    });
+  });
+  document.querySelectorAll('#settings-skill .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playerProfile.skill = btn.dataset.skill;
+      saveProfile(playerProfile);
+      renderSettings();
+      updatePinReadout();
+      updateHolePinReadout();
+      showToast(SKILL_LABEL[playerProfile.skill] + ' 수준으로 설정');
+    });
+  });
+
   document.getElementById('btn-pin-add').addEventListener('click', () => {
     if(pinState.mode === 'add'){ setPinMode('idle'); return; }
     setPinMode('add');
