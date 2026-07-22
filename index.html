@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1F3D2B">
 <title>골프 스코어</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3D2B'/%3E%3Ccircle cx='50' cy='40' r='16' fill='%23F7F3E8'/%3E%3Crect x='47' y='40' width='4' height='38' fill='%23F7F3E8'/%3E%3Cpath d='M51 42 L74 50 L51 58 Z' fill='%23C4432C'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
   :root{
     --fairway-deep:#1F3D2B;
@@ -1094,7 +1094,7 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1104,6 +1104,57 @@
   const PINS_KEY = "greencount_pins_v1";
   const PROFILE_KEY = "greencount_profile_v1";
   const YARDS_PER_METER = 1.0936133;
+  const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const OSM_TILE_OPTS = {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    crossOrigin: true
+  };
+
+  function createOsmTileLayer(){
+    return L.tileLayer(OSM_TILE_URL, OSM_TILE_OPTS);
+  }
+
+  function latLngToTileXY(lat, lng, zoom){
+    const n = Math.pow(2, zoom);
+    const x = Math.floor((lng + 180) / 360 * n);
+    const latRad = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x: x, y: y, n: n };
+  }
+
+  function buildTileUrlsAround(lat, lng, zooms, radius){
+    const urls = [];
+    const subs = ['a', 'b', 'c'];
+    (zooms || [15, 16, 17, 18]).forEach(zoom => {
+      const t = latLngToTileXY(lat, lng, zoom);
+      for(let dx = -radius; dx <= radius; dx++){
+        for(let dy = -radius; dy <= radius; dy++){
+          let x = t.x + dx;
+          let y = t.y + dy;
+          if(y < 0 || y >= t.n) continue;
+          x = ((x % t.n) + t.n) % t.n;
+          const sub = subs[(Math.abs(x + y)) % 3];
+          urls.push('https://' + sub + '.tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png');
+        }
+      }
+    });
+    return urls;
+  }
+
+  /** 온라인일 때 주변 타일을 SW 캐시에 미리 받아 오프라인에서도 지도가 보이게 함 */
+  function prefetchMapTiles(points){
+    if(!navigator.onLine) return;
+    if(!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+    const list = (points || []).filter(p => p && typeof p.lat === 'number' && typeof p.lng === 'number');
+    if(!list.length) return;
+    const urlSet = new Set();
+    list.forEach(p => {
+      buildTileUrlsAround(p.lat, p.lng, [15, 16, 17, 18], 2).forEach(u => urlSet.add(u));
+    });
+    const urls = Array.from(urlSet).slice(0, 400);
+    navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_TILES', urls: urls });
+  }
 
   /* 표준 클럽 비거리(m) — 첨부 표 기준 */
   const CLUB_DISTANCES = {
@@ -1815,6 +1866,7 @@
       : null;
     saveRounds(rounds);
     updatePlayPinButton();
+    if(data) prefetchMapTiles([{ lat: data.lat, lng: data.lng }]);
   }
 
   function updatePlayPinButton(){
@@ -2099,10 +2151,7 @@
       attributionControl: true
     }).setView([37.5665, 126.978], 16);
     L.control.zoom({ position: 'topright' }).addTo(playHoleMap);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OSM'
-    }).addTo(playHoleMap);
+    createOsmTileLayer().addTo(playHoleMap);
     playHoleMap.on('click', e => {
       if(!holePinAddMode) return;
       setCurrentHolePin({
@@ -2139,6 +2188,14 @@
         playHoleMap.setView([holePin.lat, holePin.lng], 17);
       } else if(pinState.userLat != null){
         playHoleMap.setView([pinState.userLat, pinState.userLng], 17);
+      }
+      const pts = [];
+      if(pinState.userLat != null) pts.push({ lat: pinState.userLat, lng: pinState.userLng });
+      if(holePin) pts.push({ lat: holePin.lat, lng: holePin.lng });
+      prefetchMapTiles(pts);
+      if(!navigator.onLine){
+        const gps = document.getElementById('hole-pin-gps-status');
+        if(gps) gps.textContent = '오프라인 · 캐시된 지도 사용';
       }
     }, 80);
   }
@@ -2560,6 +2617,7 @@
     renderPinList();
     updatePinReadout();
     showToast('핀이 저장되었습니다');
+    prefetchMapTiles([{ lat: lat, lng: lng }]);
   }
   function movePin(id, lat, lng){
     const pin = pinState.pins.find(p => p.id === id);
@@ -2571,6 +2629,7 @@
     syncPinMarkers();
     renderPinList();
     updatePinReadout();
+    prefetchMapTiles([{ lat: lat, lng: lng }]);
   }
   function deletePin(id){
     if(pinState.mode === 'move' && pinState.movingPinId === id){
@@ -2620,6 +2679,10 @@
     document.getElementById('pin-gps-status').textContent = 'GPS 수신 중' + acc;
     const holeGps = document.getElementById('hole-pin-gps-status');
     if(holeGps) holeGps.textContent = 'GPS 수신 중' + acc;
+    if(!navigator.onLine){
+      document.getElementById('pin-gps-status').textContent = 'GPS 수신 중' + acc + ' · 오프라인 지도';
+      if(holeGps) holeGps.textContent = 'GPS 수신 중' + acc + ' · 오프라인 지도';
+    }
     updatePinReadout();
     updateHolePinReadout();
     if(distanceLineVisible) updateDistanceLine();
@@ -2641,6 +2704,9 @@
       setUserPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
       if(firstFix && distanceLineVisible){
         showDistanceToPin();
+      }
+      if(firstFix){
+        prefetchMapTiles([{ lat: pos.coords.latitude, lng: pos.coords.longitude }]);
       }
     };
     const onErr = err => {
@@ -2671,10 +2737,7 @@
       attributionControl: true
     }).setView([37.5665, 126.978], 16);
     L.control.zoom({ position: 'topright' }).addTo(pinMap);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-    }).addTo(pinMap);
+    createOsmTileLayer().addTo(pinMap);
     pinLayer = L.layerGroup().addTo(pinMap);
     pinMap.on('click', e => {
       if(pinState.mode === 'add'){
@@ -2705,6 +2768,13 @@
       if(pinState.pins.length) fitPinMap();
       else if(pinState.userLat != null){
         pinMap.setView([pinState.userLat, pinState.userLng], 17);
+      }
+      const pts = pinState.pins.map(p => ({ lat: p.lat, lng: p.lng }));
+      if(pinState.userLat != null) pts.push({ lat: pinState.userLat, lng: pinState.userLng });
+      prefetchMapTiles(pts);
+      if(!navigator.onLine){
+        const gps = document.getElementById('pin-gps-status');
+        if(gps) gps.textContent = '오프라인 · 캐시된 지도 사용';
       }
     }, 80);
   }
@@ -2799,13 +2869,26 @@
   /* ---------------- init ---------------- */
   loadPinState();
   renderHome();
+
+  window.addEventListener('online', () => {
+    const pts = pinState.pins.map(p => ({ lat: p.lat, lng: p.lng }));
+    if(pinState.userLat != null) pts.push({ lat: pinState.userLat, lng: pinState.userLng });
+    prefetchMapTiles(pts);
+  });
+  window.addEventListener('offline', () => {
+    showToast('오프라인 모드');
+  });
 })();
 </script>
 <script>
-  // 오프라인 지원: 처음 온라인으로 열면 캐시해두고, 이후엔 오프라인에서도 실행됩니다.
+  // 오프라인: 앱 셸 + Leaflet + 지도 타일 캐시
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        // 새 SW가 있으면 바로 적용
+        if(reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        reg.update().catch(() => {});
+      }).catch(() => {});
     });
   }
 </script>
