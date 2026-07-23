@@ -689,6 +689,101 @@
     line-height:1.5;
     margin:0;
   }
+  .settings-card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .settings-card-head h3{ margin:0; }
+  .settings-card-unit{
+    font-size:12px;
+    font-weight:800;
+    color:var(--ink-soft);
+    letter-spacing:0.4px;
+  }
+  .club-dist-list{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .club-dist-item{
+    display:grid;
+    grid-template-columns:1fr 88px;
+    gap:10px;
+    align-items:center;
+    padding:10px 12px;
+    border-radius:12px;
+    background:var(--cream);
+  }
+  .club-dist-name{
+    font-size:15px;
+    font-weight:800;
+    color:var(--fairway-deep);
+  }
+  .club-dist-input-wrap{
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  .club-dist-input{
+    width:100%;
+    border:2px solid var(--line);
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:15px;
+    font-weight:800;
+    color:var(--ink);
+    background:#fff;
+    text-align:right;
+    font-family:inherit;
+    -moz-appearance:textfield;
+  }
+  .club-dist-input::-webkit-outer-spin-button,
+  .club-dist-input::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+  .club-dist-input:focus{
+    outline:none;
+    border-color:var(--fairway-bright);
+    box-shadow:0 0 0 3px rgba(74,139,92,0.12);
+  }
+  .club-dist-input:disabled{
+    background:#EEE8DA;
+    color:var(--ink-soft);
+    border-color:transparent;
+    box-shadow:none;
+  }
+  .club-dist-unit{
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-soft);
+    flex-shrink:0;
+  }
+  #btn-reset-clubs{
+    margin:12px 0 0;
+    padding:12px;
+    border:2px solid var(--line);
+    border-radius:14px;
+    background:var(--cream);
+    color:var(--fairway-deep);
+    font-weight:800;
+  }
+  #btn-reset-clubs[hidden]{ display:none; }
+  #settings-skill.seg-toggle{
+    flex-wrap:wrap;
+  }
+  #settings-skill .seg-btn{
+    flex:1 1 calc(50% - 4px);
+    min-width:0;
+    padding:12px 8px;
+    font-size:14px;
+  }
   #pin-map{
     flex:1;
     min-height:0;
@@ -864,9 +959,19 @@
           <button type="button" class="seg-btn" data-skill="beginner">초보</button>
           <button type="button" class="seg-btn active" data-skill="intermediate">중수</button>
           <button type="button" class="seg-btn" data-skill="advanced">고수</button>
+          <button type="button" class="seg-btn" data-skill="custom">커스텀</button>
         </div>
       </div>
-      <p class="settings-note">핀 거리 계산 시 성별·수준에 맞는 표준 비거리표로 추천 클럽을 보여줍니다. 거리는 미터 기준 표와 비교합니다.</p>
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <h3>클럽 비거리</h3>
+          <span class="settings-card-unit">단위: m</span>
+        </div>
+        <p class="settings-note" id="settings-club-note" style="margin-bottom:12px;">선택한 수준의 표준 비거리입니다. 수정하려면 ‘커스텀’을 선택하세요.</p>
+        <ul id="settings-club-list" class="club-dist-list" aria-label="클럽 비거리 목록"></ul>
+        <button type="button" class="ghost-btn" id="btn-reset-clubs" hidden>중수 기준으로 초기화</button>
+      </div>
+      <p class="settings-note">핀 거리 계산 시 선택한 수준의 비거리표로 추천 클럽을 보여줍니다.</p>
     </div>
   </div>
 
@@ -1333,10 +1438,44 @@
     }
   };
   const GENDER_LABEL = { male: '남자', female: '여자' };
-  const SKILL_LABEL = { beginner: '초보', intermediate: '중수', advanced: '고수' };
+  const SKILL_LABEL = { beginner: '초보', intermediate: '중수', advanced: '고수', custom: '커스텀' };
+  const SKILL_OPTIONS = ['beginner', 'intermediate', 'advanced', 'custom'];
 
   function defaultProfile(){
-    return { gender: 'male', skill: 'intermediate' };
+    return { gender: 'male', skill: 'intermediate', customClubs: {} };
+  }
+  function clubTemplateList(gender){
+    return ((CLUB_DISTANCES[gender] && CLUB_DISTANCES[gender].intermediate) || []).map(c => ({ name: c.name, m: c.m }));
+  }
+  function normalizeClubList(list, gender){
+    const defaults = clubTemplateList(gender);
+    if(!Array.isArray(list) || !list.length){
+      return defaults.map(c => ({ name: c.name, m: c.m }));
+    }
+    const byName = {};
+    list.forEach(c => {
+      if(!c || !c.name) return;
+      const m = Number(c.m);
+      if(isFinite(m) && m > 0) byName[c.name] = Math.round(m);
+    });
+    return defaults.map(c => ({
+      name: c.name,
+      m: (byName[c.name] != null) ? byName[c.name] : c.m
+    }));
+  }
+  function migrateCustomClubs(data, gender){
+    if(data.customClubs && Array.isArray(data.customClubs[gender])){
+      return normalizeClubList(data.customClubs[gender], gender);
+    }
+    // 이전 형식(clubCustoms[gender][skill]) 호환
+    const old = data.clubCustoms && data.clubCustoms[gender];
+    if(old && typeof old === 'object'){
+      if(Array.isArray(old.custom)) return normalizeClubList(old.custom, gender);
+      for(const s of ['intermediate', 'advanced', 'beginner']){
+        if(Array.isArray(old[s])) return normalizeClubList(old[s], gender);
+      }
+    }
+    return null;
   }
   function loadProfile(){
     try{
@@ -1344,8 +1483,13 @@
       if(!raw) return defaultProfile();
       const data = JSON.parse(raw);
       const gender = (data.gender === 'female') ? 'female' : 'male';
-      const skill = ['beginner','intermediate','advanced'].includes(data.skill) ? data.skill : 'intermediate';
-      return { gender, skill };
+      const skill = SKILL_OPTIONS.includes(data.skill) ? data.skill : 'intermediate';
+      const customClubs = {};
+      ['male', 'female'].forEach(g => {
+        const migrated = migrateCustomClubs(data, g);
+        if(migrated) customClubs[g] = migrated;
+      });
+      return { gender, skill, customClubs };
     }catch(e){ return defaultProfile(); }
   }
   function saveProfile(profile){
@@ -1353,13 +1497,62 @@
   }
   let playerProfile = loadProfile();
 
+  function isCustomSkill(){
+    return playerProfile.skill === 'custom';
+  }
+  function getDefaultClubList(gender, skill){
+    const g = gender || playerProfile.gender;
+    const s = skill || playerProfile.skill;
+    if(s === 'custom') return clubTemplateList(g);
+    return ((CLUB_DISTANCES[g] && CLUB_DISTANCES[g][s]) || []).map(c => ({ name: c.name, m: c.m }));
+  }
+  function ensureCustomClubList(gender){
+    const g = gender || playerProfile.gender;
+    if(!playerProfile.customClubs) playerProfile.customClubs = {};
+    if(!Array.isArray(playerProfile.customClubs[g])){
+      playerProfile.customClubs[g] = clubTemplateList(g);
+      saveProfile(playerProfile);
+    }
+    return playerProfile.customClubs[g];
+  }
+  function getActiveClubList(){
+    const g = playerProfile.gender;
+    if(isCustomSkill()){
+      return normalizeClubList(ensureCustomClubList(g), g);
+    }
+    return getDefaultClubList(g, playerProfile.skill);
+  }
+  function saveCustomClubList(list){
+    const g = playerProfile.gender;
+    if(!playerProfile.customClubs) playerProfile.customClubs = {};
+    playerProfile.customClubs[g] = normalizeClubList(list, g);
+    saveProfile(playerProfile);
+  }
+  function resetCustomClubList(){
+    const g = playerProfile.gender;
+    if(!playerProfile.customClubs) playerProfile.customClubs = {};
+    playerProfile.customClubs[g] = clubTemplateList(g);
+    saveProfile(playerProfile);
+  }
+  function updateClubDistance(name, meters){
+    if(!isCustomSkill()) return false;
+    const m = Math.round(Number(meters));
+    if(!name || !isFinite(m) || m < 1 || m > 500) return false;
+    const list = getActiveClubList();
+    const item = list.find(c => c.name === name);
+    if(!item) return false;
+    item.m = m;
+    saveCustomClubList(list);
+    return true;
+  }
+
   function isIronClub(name){
     return /Iron|Pitch W|Sand W/.test(name);
   }
   /** 핀까지 거리(m)에 맞는 클럽 추천 — 도달 가능 중 가장 짧은 클럽, 동거리면 아이언 우선 */
   function recommendClub(meters){
     if(typeof meters !== 'number' || !isFinite(meters) || meters < 0) return null;
-    const list = CLUB_DISTANCES[playerProfile.gender][playerProfile.skill];
+    const list = getActiveClubList();
     if(!list || !list.length) return null;
 
     const reachable = list.filter(c => c.m >= meters);
@@ -1380,7 +1573,8 @@
       name: pick.name,
       clubMeters: pick.m,
       gender: playerProfile.gender,
-      skill: playerProfile.skill
+      skill: playerProfile.skill,
+      custom: isCustomSkill()
     };
   }
   function setClubRecommendUI(prefix, meters){
@@ -1396,7 +1590,7 @@
     box.classList.remove('hidden');
     nameEl.textContent = rec.name;
     subEl.textContent = GENDER_LABEL[rec.gender] + ' · ' + SKILL_LABEL[rec.skill] +
-      ' 기준 ' + rec.clubMeters + 'm';
+      (rec.custom ? ' · 내 비거리 ' : ' 기준 ') + rec.clubMeters + 'm';
   }
   function clearClubRecommendUI(prefix){
     const box = document.getElementById(prefix + '-club-recommend');
@@ -2938,6 +3132,64 @@
     renderHome();
   });
 
+  function renderClubDistanceList(){
+    const listEl = document.getElementById('settings-club-list');
+    const noteEl = document.getElementById('settings-club-note');
+    const resetBtn = document.getElementById('btn-reset-clubs');
+    if(!listEl) return;
+    const editable = isCustomSkill();
+    if(noteEl){
+      noteEl.textContent = editable
+        ? '커스텀 비거리입니다. 숫자를 바꾸면 추천에 바로 반영됩니다.'
+        : '선택한 수준의 표준 비거리입니다. 수정하려면 ‘커스텀’을 선택하세요.';
+    }
+    if(resetBtn) resetBtn.hidden = !editable;
+    const clubs = getActiveClubList();
+    listEl.innerHTML = '';
+    clubs.forEach(club => {
+      const li = document.createElement('li');
+      li.className = 'club-dist-item';
+
+      const name = document.createElement('div');
+      name.className = 'club-dist-name';
+      name.textContent = club.name;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'club-dist-input-wrap';
+
+      const input = document.createElement('input');
+      input.className = 'club-dist-input';
+      input.type = 'number';
+      input.min = '1';
+      input.max = '500';
+      input.step = '1';
+      input.inputMode = 'numeric';
+      input.value = String(club.m);
+      input.disabled = !editable;
+      input.readOnly = !editable;
+      input.setAttribute('aria-label', club.name + ' 비거리');
+      if(editable){
+        input.addEventListener('change', () => {
+          if(!updateClubDistance(club.name, input.value)){
+            input.value = String(getActiveClubList().find(c => c.name === club.name).m);
+            showToast('1~500m 사이로 입력하세요');
+            return;
+          }
+          updatePinReadout();
+          updateHolePinReadout();
+          showToast(club.name + ' ' + Math.round(Number(input.value)) + 'm 저장');
+        });
+      }
+
+      const unit = document.createElement('span');
+      unit.className = 'club-dist-unit';
+      unit.textContent = 'm';
+
+      wrap.append(input, unit);
+      li.append(name, wrap);
+      listEl.appendChild(li);
+    });
+  }
   function renderSettings(){
     document.querySelectorAll('#settings-gender .seg-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.gender === playerProfile.gender);
@@ -2945,6 +3197,7 @@
     document.querySelectorAll('#settings-skill .seg-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.skill === playerProfile.skill);
     });
+    renderClubDistanceList();
   }
   function openSettings(){
     renderSettings();
@@ -2968,11 +3221,22 @@
   document.querySelectorAll('#settings-skill .seg-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       playerProfile.skill = btn.dataset.skill;
+      if(playerProfile.skill === 'custom') ensureCustomClubList(playerProfile.gender);
       saveProfile(playerProfile);
       renderSettings();
       updatePinReadout();
       updateHolePinReadout();
-      showToast(SKILL_LABEL[playerProfile.skill] + ' 수준으로 설정');
+      showToast(SKILL_LABEL[playerProfile.skill] + (playerProfile.skill === 'custom' ? '으로 설정' : ' 수준으로 설정'));
+    });
+  });
+  document.getElementById('btn-reset-clubs').addEventListener('click', () => {
+    if(!isCustomSkill()) return;
+    askConfirm('커스텀 초기화', '커스텀 비거리를 중수 표준값으로 되돌릴까요?', () => {
+      resetCustomClubList();
+      renderClubDistanceList();
+      updatePinReadout();
+      updateHolePinReadout();
+      showToast('중수 기준으로 초기화됨');
     });
   });
 
