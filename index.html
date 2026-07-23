@@ -779,6 +779,22 @@
     font-size:9px !important;
     background:rgba(255,255,255,0.7) !important;
   }
+  .map-type-toggle{
+    border:none;
+    border-radius:12px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:800;
+    font-family:inherit;
+    color:var(--fairway-deep);
+    background:rgba(247,243,232,0.92);
+    box-shadow:0 2px 10px rgba(24,32,24,0.18);
+    cursor:pointer;
+    line-height:1.2;
+  }
+  .map-type-toggle:active{
+    background:#fff;
+  }
   .pin-edit-actions{ display:flex; gap:8px; margin-top:8px; }
   .pin-edit-actions .ghost-btn,
   .pin-edit-actions .danger-btn{
@@ -1104,15 +1120,84 @@
   const PINS_KEY = "greencount_pins_v1";
   const PROFILE_KEY = "greencount_profile_v1";
   const YARDS_PER_METER = 1.0936133;
+  const MAP_TYPE_KEY = "greencount_map_type_v1";
+  const MAP_TYPE_OSM = 'osm';
+  const MAP_TYPE_SAT = 'satellite';
   const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const OSM_TILE_OPTS = {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     crossOrigin: true
   };
+  const SAT_TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  const SAT_TILE_OPTS = {
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri',
+    crossOrigin: true
+  };
 
-  function createOsmTileLayer(){
+  function loadMapType(){
+    try{
+      const t = localStorage.getItem(MAP_TYPE_KEY);
+      if(t === MAP_TYPE_SAT) return MAP_TYPE_SAT;
+    }catch(e){}
+    return MAP_TYPE_OSM;
+  }
+  function saveMapType(type){
+    try{ localStorage.setItem(MAP_TYPE_KEY, type); }catch(e){}
+  }
+  let currentMapType = loadMapType();
+  let playHoleMap = null;
+  let pinMap = null;
+
+  function createBaseTileLayer(type){
+    if(type === MAP_TYPE_SAT) return L.tileLayer(SAT_TILE_URL, SAT_TILE_OPTS);
     return L.tileLayer(OSM_TILE_URL, OSM_TILE_OPTS);
+  }
+
+  function syncMapTypeButtons(){
+    document.querySelectorAll('.map-type-toggle').forEach(btn => {
+      const isSat = currentMapType === MAP_TYPE_SAT;
+      btn.textContent = isSat ? '지도' : '위성';
+      btn.title = isSat ? '일반 지도로 전환' : '위성 사진으로 전환';
+      btn.setAttribute('aria-label', btn.title);
+    });
+  }
+
+  function setMapType(type){
+    if(type !== MAP_TYPE_OSM && type !== MAP_TYPE_SAT) return;
+    if(type === currentMapType) return;
+    currentMapType = type;
+    saveMapType(type);
+    const centers = [];
+    [playHoleMap, pinMap].forEach(map => {
+      if(!map || !map._gcBaseLayer) return;
+      map.removeLayer(map._gcBaseLayer);
+      map._gcBaseLayer = createBaseTileLayer(type).addTo(map);
+      const c = map.getCenter();
+      if(c) centers.push({ lat: c.lat, lng: c.lng });
+    });
+    syncMapTypeButtons();
+    if(centers.length) prefetchMapTiles(centers);
+  }
+
+  const MapTypeControl = L.Control.extend({
+    options: { position: 'topleft' },
+    onAdd: function(){
+      const btn = L.DomUtil.create('button', 'map-type-toggle');
+      btn.type = 'button';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, 'click', function(e){
+        L.DomEvent.stop(e);
+        setMapType(currentMapType === MAP_TYPE_SAT ? MAP_TYPE_OSM : MAP_TYPE_SAT);
+      });
+      return btn;
+    }
+  });
+
+  function addMapTypeControl(map){
+    new MapTypeControl().addTo(map);
+    syncMapTypeButtons();
   }
 
   function latLngToTileXY(lat, lng, zoom){
@@ -1126,6 +1211,7 @@
   function buildTileUrlsAround(lat, lng, zooms, radius){
     const urls = [];
     const subs = ['a', 'b', 'c'];
+    const useSat = currentMapType === MAP_TYPE_SAT;
     (zooms || [15, 16, 17, 18]).forEach(zoom => {
       const t = latLngToTileXY(lat, lng, zoom);
       for(let dx = -radius; dx <= radius; dx++){
@@ -1134,8 +1220,13 @@
           let y = t.y + dy;
           if(y < 0 || y >= t.n) continue;
           x = ((x % t.n) + t.n) % t.n;
-          const sub = subs[(Math.abs(x + y)) % 3];
-          urls.push('https://' + sub + '.tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png');
+          if(useSat){
+            // Esri uses /{z}/{y}/{x}
+            urls.push('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + zoom + '/' + y + '/' + x);
+          } else {
+            const sub = subs[(Math.abs(x + y)) % 3];
+            urls.push('https://' + sub + '.tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png');
+          }
         }
       }
     });
@@ -1831,7 +1922,6 @@
   /* ---------------- PLAY screen ---------------- */
   let activeRoundId = null;
   let currentHole = 0;
-  let playHoleMap = null;
   let playHoleMapReady = false;
   let playHolePinMarker = null;
   let playUserMarker = null;
@@ -2151,7 +2241,8 @@
       attributionControl: true
     }).setView([37.5665, 126.978], 16);
     L.control.zoom({ position: 'topright' }).addTo(playHoleMap);
-    createOsmTileLayer().addTo(playHoleMap);
+    playHoleMap._gcBaseLayer = createBaseTileLayer(currentMapType).addTo(playHoleMap);
+    addMapTypeControl(playHoleMap);
     playHoleMap.on('click', e => {
       if(!holePinAddMode) return;
       setCurrentHolePin({
@@ -2330,7 +2421,6 @@
     gpsStarted: false,
     mapReady: false
   };
-  let pinMap = null;
   let pinLayer = null;
   let userMarker = null;
   let distanceLine = null;
@@ -2737,7 +2827,8 @@
       attributionControl: true
     }).setView([37.5665, 126.978], 16);
     L.control.zoom({ position: 'topright' }).addTo(pinMap);
-    createOsmTileLayer().addTo(pinMap);
+    pinMap._gcBaseLayer = createBaseTileLayer(currentMapType).addTo(pinMap);
+    addMapTypeControl(pinMap);
     pinLayer = L.layerGroup().addTo(pinMap);
     pinMap.on('click', e => {
       if(pinState.mode === 'add'){

@@ -1,8 +1,8 @@
 // GreenCount offline support:
 // - Precache app shell + local Leaflet
-// - Cache OpenStreetMap tiles for offline map viewing
+// - Cache OpenStreetMap + Esri satellite tiles for offline map viewing
 
-const APP_CACHE = 'greencount-app-v7';
+const APP_CACHE = 'greencount-app-v8';
 const TILE_CACHE = 'greencount-tiles-v1';
 const MAX_TILES = 800;
 
@@ -21,6 +21,14 @@ const PRECACHE_URLS = [
 
 function isOsmTile(url) {
   return /^https:\/\/[abc]\.tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png(?:\?.*)?$/.test(url);
+}
+
+function isEsriTile(url) {
+  return /^https:\/\/(?:server|services)\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\/\d+\/\d+\/\d+(?:\?.*)?$/.test(url);
+}
+
+function isMapTile(url) {
+  return isOsmTile(url) || isEsriTile(url);
 }
 
 async function trimTileCache(cache) {
@@ -59,7 +67,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = event.request.url;
 
-  if (isOsmTile(url)) {
+  if (isMapTile(url)) {
     event.respondWith(handleTileRequest(event.request));
     return;
   }
@@ -135,7 +143,7 @@ self.addEventListener('message', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(TILE_CACHE);
     for (const url of data.urls) {
-      if (!isOsmTile(url)) continue;
+      if (!isMapTile(url)) continue;
       try {
         const existing = await cache.match(url);
         if (existing) continue;
