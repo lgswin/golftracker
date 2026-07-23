@@ -399,7 +399,17 @@
     background:rgba(74,139,92,0.45);
   }
 
-  #screen-hole-pin .pins-panel{ max-height:30vh; }
+  #screen-hole-pin .pins-panel{
+    max-height:none;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    gap:8px;
+  }
+  #screen-hole-pin .pins-actions .primary-btn,
+  #screen-hole-pin .pins-actions .ghost-btn,
+  #screen-hole-pin #btn-hole-pin-clear{
+    padding:10px 12px;
+    font-size:14px;
+  }
   #play-hole-pin-map{
     flex:1;
     min-height:0;
@@ -583,6 +593,14 @@
 
   /* ---------- Pin yardage ---------- */
   .topbar-actions{ display:flex; gap:8px; align-items:center; }
+  #screen-pins .topbar,
+  #screen-hole-pin .topbar{
+    padding:8px 12px 6px;
+  }
+  #screen-pins .topbar .brand,
+  #screen-hole-pin .topbar .brand{
+    font-size:16px;
+  }
   .unit-chip{
     background:rgba(247,243,232,0.12);
     border:1px solid rgba(247,243,232,0.28);
@@ -597,37 +615,37 @@
     background:var(--fairway-deep);
     color:var(--cream);
     text-align:center;
-    padding:4px 16px 14px;
+    padding:0 14px 8px;
     flex-shrink:0;
   }
-  .pins-readout .label{ margin:0; font-size:13px; opacity:0.85; font-weight:600; }
+  .pins-readout .label{ margin:0; font-size:12px; opacity:0.85; font-weight:600; }
   .pins-readout .value{
     margin:2px 0 0;
-    font-size:clamp(2.6rem, 11vw, 3.4rem);
+    font-size:clamp(1.8rem, 8vw, 2.4rem);
     font-weight:800;
     line-height:1;
     letter-spacing:-0.03em;
   }
-  .pins-readout .hint{ margin:6px 0 0; font-size:11px; opacity:0.65; }
+  .pins-readout .hint{ margin:4px 0 0; font-size:10px; opacity:0.65; }
   .club-recommend{
-    margin:10px auto 0;
+    margin:6px auto 0;
     max-width:280px;
-    padding:10px 14px;
-    border-radius:14px;
+    padding:6px 12px;
+    border-radius:12px;
     background:rgba(247,243,232,0.12);
     border:1px solid rgba(247,243,232,0.2);
     text-align:center;
   }
   .club-recommend .club-name{
     margin:0;
-    font-size:22px;
+    font-size:18px;
     font-weight:800;
     color:var(--gold);
     letter-spacing:0.02em;
   }
   .club-recommend .club-sub{
-    margin:4px 0 0;
-    font-size:12px;
+    margin:2px 0 0;
+    font-size:11px;
     opacity:0.8;
     font-weight:600;
   }
@@ -681,18 +699,18 @@
     background:#fff;
     border-top:1px solid var(--line);
     box-shadow:0 -6px 20px rgba(24,32,24,0.08);
-    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
-    max-height:36vh;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    max-height:none;
     display:flex;
     flex-direction:column;
-    gap:10px;
+    gap:8px;
     flex-shrink:0;
     z-index:2;
   }
   .pins-actions{ display:flex; gap:8px; }
   .pins-actions .primary-btn,
   .pins-actions .ghost-btn{
-    margin:0; flex:1; padding:12px 14px; font-size:15px;
+    margin:0; flex:1; padding:10px 12px; font-size:14px;
   }
   .pins-actions .ghost-btn{
     border:2px solid var(--line);
@@ -716,6 +734,8 @@
     list-style:none; margin:0; padding:0;
     overflow-y:auto; -webkit-overflow-scrolling:touch;
     display:flex; flex-direction:column; gap:6px;
+    /* 홀(핀) 약 2개만 보이도록 */
+    max-height:calc(2 * 64px + 6px);
   }
   .pin-list:empty::after{
     content:"저장된 핀이 없습니다. ‘핀 추가’로 지도에 탭하세요.";
@@ -723,8 +743,10 @@
   }
   .pin-item{
     display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center;
-    padding:12px 14px; border-radius:14px;
+    padding:10px 12px; border-radius:12px;
     background:var(--cream); border:2px solid transparent;
+    min-height:64px;
+    box-sizing:border-box;
   }
   .pin-item.selected{ border-color:var(--fairway-bright); background:#EAF3EC; }
   .pin-main{
@@ -957,7 +979,7 @@
   <div class="screen" id="screen-hole-pin">
     <div class="topbar">
       <button class="icon-btn" id="btn-hole-pin-back">‹</button>
-      <div class="brand" style="font-size:18px" id="hole-pin-title">홀 1 핀거리</div>
+      <div class="brand" style="font-size:18px" id="hole-pin-title">홀 1</div>
       <button class="unit-chip" id="btn-hole-pin-unit" aria-label="단위 전환">yd</button>
     </div>
     <section class="pins-readout" aria-live="polite">
@@ -1004,7 +1026,7 @@
   <div class="screen" id="screen-pins">
     <div class="topbar">
       <button class="icon-btn" id="btn-pins-back">‹</button>
-      <div class="brand" style="font-size:18px">핀 거리</div>
+      <div class="brand" style="font-size:18px" id="pin-top-title">홀</div>
       <button class="unit-chip" id="btn-pin-unit" aria-label="단위 전환">yd</button>
     </div>
     <section class="pins-readout" aria-live="polite">
@@ -1123,6 +1145,7 @@
   const MAP_TYPE_KEY = "greencount_map_type_v1";
   const MAP_TYPE_OSM = 'osm';
   const MAP_TYPE_SAT = 'satellite';
+  const DEFAULT_MAP_ZOOM = 19;
   const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const OSM_TILE_OPTS = {
     maxZoom: 19,
@@ -1198,6 +1221,19 @@
   function addMapTypeControl(map){
     new MapTypeControl().addTo(map);
     syncMapTypeButtons();
+  }
+
+  function setMapViewAtZoom(map, latlngs, opts){
+    if(!map) return;
+    const points = (latlngs || []).filter(p => p && typeof p.lat === 'number' && typeof p.lng === 'number');
+    if(!points.length) return;
+    const animate = !!(opts && opts.animate);
+    if(points.length === 1){
+      map.setView([points[0].lat, points[0].lng], DEFAULT_MAP_ZOOM, { animate: animate });
+      return;
+    }
+    const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
+    map.setView(bounds.getCenter(), DEFAULT_MAP_ZOOM, { animate: animate });
   }
 
   function latLngToTileXY(lat, lng, zoom){
@@ -1974,7 +2010,7 @@
     if(!unitBtn || !label || !distEl) return;
 
     unitBtn.textContent = pinState.unit;
-    document.getElementById('hole-pin-title').textContent = '홀 ' + (currentHole + 1) + ' 핀거리';
+    document.getElementById('hole-pin-title').textContent = '홀 ' + (currentHole + 1);
 
     if(pinState.userLat != null){
       const acc = '';
@@ -1982,12 +2018,13 @@
     }
 
     if(!holePin){
+      label.hidden = false;
       label.textContent = '지도를 탭해 이 홀 핀을 저장하세요';
       distEl.textContent = '—';
       clearClubRecommendUI('hole');
       return;
     }
-    label.textContent = holePin.name || ('홀 ' + (currentHole + 1));
+    label.hidden = true;
     if(pinState.userLat == null || pinState.userLng == null){
       distEl.textContent = '—';
       clearClubRecommendUI('hole');
@@ -2239,7 +2276,7 @@
     playHoleMap = L.map('play-hole-pin-map', {
       zoomControl: false,
       attributionControl: true
-    }).setView([37.5665, 126.978], 16);
+    }).setView([37.5665, 126.978], DEFAULT_MAP_ZOOM);
     L.control.zoom({ position: 'topright' }).addTo(playHoleMap);
     playHoleMap._gcBaseLayer = createBaseTileLayer(currentMapType).addTo(playHoleMap);
     addMapTypeControl(playHoleMap);
@@ -2250,8 +2287,17 @@
         lng: e.latlng.lng,
         name: '홀 ' + (currentHole + 1)
       });
+      playDistanceLineVisible = true;
       updatePlayHoleMapLayers();
       updateHolePinReadout();
+      if(pinState.userLat != null && pinState.userLng != null){
+        setMapViewAtZoom(playHoleMap, [
+          { lat: e.latlng.lat, lng: e.latlng.lng },
+          { lat: pinState.userLat, lng: pinState.userLng }
+        ], { animate: true });
+      } else {
+        setMapViewAtZoom(playHoleMap, [{ lat: e.latlng.lat, lng: e.latlng.lng }], { animate: true });
+      }
       showToast('홀 ' + (currentHole + 1) + ' 핀 저장');
     });
     playHoleMapReady = true;
@@ -2260,7 +2306,7 @@
   function openHolePinScreen(){
     playDistanceLineVisible = false;
     setHolePinAddMode(false);
-    document.getElementById('hole-pin-title').textContent = '홀 ' + (currentHole + 1) + ' 핀거리';
+    document.getElementById('hole-pin-title').textContent = '홀 ' + (currentHole + 1);
     updateHolePinReadout();
     showScreen('screen-hole-pin');
     startPinGps();
@@ -2271,14 +2317,14 @@
       updatePlayHoleMapLayers();
       const holePin = getCurrentHolePin();
       if(holePin && pinState.userLat != null){
-        playHoleMap.fitBounds(L.latLngBounds(
-          [holePin.lat, holePin.lng],
-          [pinState.userLat, pinState.userLng]
-        ).pad(0.4), { maxZoom: 18 });
+        setMapViewAtZoom(playHoleMap, [
+          { lat: holePin.lat, lng: holePin.lng },
+          { lat: pinState.userLat, lng: pinState.userLng }
+        ]);
       } else if(holePin){
-        playHoleMap.setView([holePin.lat, holePin.lng], 17);
+        setMapViewAtZoom(playHoleMap, [{ lat: holePin.lat, lng: holePin.lng }]);
       } else if(pinState.userLat != null){
-        playHoleMap.setView([pinState.userLat, pinState.userLng], 17);
+        setMapViewAtZoom(playHoleMap, [{ lat: pinState.userLat, lng: pinState.userLng }]);
       }
       const pts = [];
       if(pinState.userLat != null) pts.push({ lat: pinState.userLat, lng: pinState.userLng });
@@ -2306,10 +2352,10 @@
     }
     updatePlayHoleMapLayers();
     if(playHoleMap){
-      playHoleMap.fitBounds(L.latLngBounds(
-        [holePin.lat, holePin.lng],
-        [pinState.userLat, pinState.userLng]
-      ).pad(0.4), { maxZoom: 18, animate: true });
+      setMapViewAtZoom(playHoleMap, [
+        { lat: holePin.lat, lng: holePin.lng },
+        { lat: pinState.userLat, lng: pinState.userLng }
+      ], { animate: true });
     }
     showToast('거리 표시');
   }
@@ -2471,14 +2517,17 @@
   function updatePinReadout(){
     const pin = getActivePin();
     document.getElementById('btn-pin-unit').textContent = pinState.unit;
+    const topTitle = document.getElementById('pin-top-title');
+    if(topTitle) topTitle.textContent = pin ? pin.name : '홀';
     if(!pin){
+      document.getElementById('pin-active-label').hidden = false;
       document.getElementById('pin-active-label').textContent = '핀을 선택하거나 지도에 추가하세요';
       document.getElementById('pin-distance').textContent = '—';
       clearClubRecommendUI('pin');
       updateDistanceLine();
       return;
     }
-    document.getElementById('pin-active-label').textContent = pin.name;
+    document.getElementById('pin-active-label').hidden = true;
     if(pinState.userLat == null || pinState.userLng == null){
       document.getElementById('pin-distance').textContent = '—';
       clearClubRecommendUI('pin');
@@ -2544,11 +2593,10 @@
     updatePinReadout();
     updateDistanceLine();
     if(pinMap){
-      const bounds = L.latLngBounds(
-        [pinState.userLat, pinState.userLng],
-        [pin.lat, pin.lng]
-      );
-      pinMap.fitBounds(bounds.pad(0.4), { maxZoom: 18, animate: true });
+      setMapViewAtZoom(pinMap, [
+        { lat: pinState.userLat, lng: pinState.userLng },
+        { lat: pin.lat, lng: pin.lng }
+      ], { animate: true });
     }
     showToast('거리 표시');
   }
@@ -2705,7 +2753,20 @@
     setPinMode('idle');
     syncPinMarkers();
     renderPinList();
+    startPinGps();
+    distanceLineVisible = true;
+    const locateBtn = document.getElementById('btn-pin-locate');
+    if(locateBtn) locateBtn.classList.add('active');
     updatePinReadout();
+    updateDistanceLine();
+    if(pinMap && pinState.userLat != null && pinState.userLng != null){
+      setMapViewAtZoom(pinMap, [
+        { lat: pinState.userLat, lng: pinState.userLng },
+        { lat: lat, lng: lng }
+      ], { animate: true });
+    } else {
+      setMapViewAtZoom(pinMap, [{ lat: lat, lng: lng }], { animate: true });
+    }
     showToast('핀이 저장되었습니다');
     prefetchMapTiles([{ lat: lat, lng: lng }]);
   }
@@ -2816,16 +2877,16 @@
   }
   function fitPinMap(){
     if(!pinMap || pinState.pins.length === 0) return;
-    const bounds = L.latLngBounds(pinState.pins.map(p => [p.lat, p.lng]));
-    if(pinState.userLat != null) bounds.extend([pinState.userLat, pinState.userLng]);
-    pinMap.fitBounds(bounds.pad(0.35), { maxZoom: 18 });
+    const pts = pinState.pins.map(p => ({ lat: p.lat, lng: p.lng }));
+    if(pinState.userLat != null) pts.push({ lat: pinState.userLat, lng: pinState.userLng });
+    setMapViewAtZoom(pinMap, pts);
   }
   function initPinMap(){
     if(pinState.mapReady || typeof L === 'undefined') return;
     pinMap = L.map('pin-map', {
       zoomControl: false,
       attributionControl: true
-    }).setView([37.5665, 126.978], 16);
+    }).setView([37.5665, 126.978], DEFAULT_MAP_ZOOM);
     L.control.zoom({ position: 'topright' }).addTo(pinMap);
     pinMap._gcBaseLayer = createBaseTileLayer(currentMapType).addTo(pinMap);
     addMapTypeControl(pinMap);
@@ -2858,7 +2919,7 @@
       pinMap.invalidateSize();
       if(pinState.pins.length) fitPinMap();
       else if(pinState.userLat != null){
-        pinMap.setView([pinState.userLat, pinState.userLng], 17);
+        setMapViewAtZoom(pinMap, [{ lat: pinState.userLat, lng: pinState.userLng }]);
       }
       const pts = pinState.pins.map(p => ({ lat: p.lat, lng: p.lng }));
       if(pinState.userLat != null) pts.push({ lat: pinState.userLat, lng: pinState.userLng });
