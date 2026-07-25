@@ -914,6 +914,26 @@
   .map-type-toggle:active{
     background:#fff;
   }
+  .map-locate-btn{
+    border:none;
+    border-radius:12px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:800;
+    font-family:inherit;
+    color:var(--fairway-deep);
+    background:rgba(247,243,232,0.92);
+    box-shadow:0 2px 10px rgba(24,32,24,0.18);
+    cursor:pointer;
+    line-height:1.2;
+  }
+  .map-locate-btn:active{
+    background:#fff;
+  }
+  .map-locate-btn.is-syncing{
+    opacity:0.65;
+    pointer-events:none;
+  }
   .pin-edit-actions{ display:flex; gap:8px; margin-top:8px; }
   .pin-edit-actions .ghost-btn,
   .pin-edit-actions .danger-btn{
@@ -1328,6 +1348,91 @@
   function addMapTypeControl(map){
     new MapTypeControl().addTo(map);
     syncMapTypeButtons();
+  }
+
+  let gpsResyncInFlight = false;
+  function setLocateButtonsSyncing(on){
+    document.querySelectorAll('.map-locate-btn').forEach(btn => {
+      btn.classList.toggle('is-syncing', !!on);
+      btn.disabled = !!on;
+    });
+  }
+  function resyncMyLocation(){
+    if(gpsResyncInFlight) return;
+    if(!navigator.geolocation){
+      showToast('이 기기에서 GPS를 사용할 수 없습니다');
+      return;
+    }
+    gpsResyncInFlight = true;
+    setLocateButtonsSyncing(true);
+    const statusPin = document.getElementById('pin-gps-status');
+    const statusHole = document.getElementById('hole-pin-gps-status');
+    if(statusPin) statusPin.textContent = '위치 동기화 중…';
+    if(statusHole) statusHole.textContent = '위치 동기화 중…';
+    startPinGps();
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        gpsResyncInFlight = false;
+        setLocateButtonsSyncing(false);
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserPosition(lat, lng, pos.coords.accuracy);
+        const me = { lat: lat, lng: lng };
+        if(pinMap && document.getElementById('screen-pins').classList.contains('active')){
+          const pin = getActivePin();
+          if(pin){
+            setMapViewAtZoom(pinMap, [me, { lat: pin.lat, lng: pin.lng }], { animate: true });
+          } else {
+            setMapViewAtZoom(pinMap, [me], { animate: true });
+          }
+        }
+        if(playHoleMap && document.getElementById('screen-hole-pin').classList.contains('active')){
+          const holePin = getCurrentHolePin();
+          if(holePin){
+            setMapViewAtZoom(playHoleMap, [me, { lat: holePin.lat, lng: holePin.lng }], { animate: true });
+          } else {
+            setMapViewAtZoom(playHoleMap, [me], { animate: true });
+          }
+        }
+        prefetchMapTiles([me]);
+        showToast('현재 위치 동기화됨');
+      },
+      err => {
+        gpsResyncInFlight = false;
+        setLocateButtonsSyncing(false);
+        const messages = {
+          1: '위치 권한이 거부되었습니다. 설정에서 위치 접근을 허용하세요.',
+          2: '위치를 확인할 수 없습니다.',
+          3: '위치 요청이 시간 초과되었습니다.'
+        };
+        const msg = messages[err.code] || 'GPS 오류';
+        if(statusPin) statusPin.textContent = msg;
+        if(statusHole) statusHole.textContent = msg;
+        showToast(msg);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
+  const LocateControl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd: function(){
+      const btn = L.DomUtil.create('button', 'map-locate-btn');
+      btn.type = 'button';
+      btn.textContent = '내 위치';
+      btn.title = '현재 위치 다시 동기화';
+      btn.setAttribute('aria-label', '현재 위치 다시 동기화');
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, 'click', function(e){
+        L.DomEvent.stop(e);
+        resyncMyLocation();
+      });
+      return btn;
+    }
+  });
+
+  function addLocateControl(map){
+    new LocateControl().addTo(map);
   }
 
   function setMapViewAtZoom(map, latlngs, opts){
@@ -2476,6 +2581,7 @@
     L.control.zoom({ position: 'topright' }).addTo(playHoleMap);
     playHoleMap._gcBaseLayer = createBaseTileLayer(currentMapType).addTo(playHoleMap);
     addMapTypeControl(playHoleMap);
+    addLocateControl(playHoleMap);
     playHoleMap.on('click', e => {
       if(!holePinAddMode) return;
       setCurrentHolePin({
@@ -3086,6 +3192,7 @@
     L.control.zoom({ position: 'topright' }).addTo(pinMap);
     pinMap._gcBaseLayer = createBaseTileLayer(currentMapType).addTo(pinMap);
     addMapTypeControl(pinMap);
+    addLocateControl(pinMap);
     pinLayer = L.layerGroup().addTo(pinMap);
     pinMap.on('click', e => {
       if(pinState.mode === 'add'){
