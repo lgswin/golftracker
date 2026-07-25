@@ -1351,11 +1351,46 @@
   }
 
   let gpsResyncInFlight = false;
+  let gpsIgnoreUntil = 0;
+  let gpsLastFixAt = 0;
   function setLocateButtonsSyncing(on){
     document.querySelectorAll('.map-locate-btn').forEach(btn => {
       btn.classList.toggle('is-syncing', !!on);
       btn.disabled = !!on;
     });
+  }
+  function applyGpsPosition(pos, opts){
+    if(!pos || !pos.coords) return false;
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const accuracy = pos.coords.accuracy;
+    const ts = (typeof pos.timestamp === 'number') ? pos.timestamp : Date.now();
+    const force = !!(opts && opts.force);
+    if(!force){
+      if(Date.now() < gpsIgnoreUntil) return false;
+      // 더 오래된/부정확한 watch 값으로 방금 받은 위치를 덮어쓰지 않음
+      if(gpsLastFixAt && ts + 500 < gpsLastFixAt) return false;
+      if(
+        pinState.userLat != null &&
+        typeof accuracy === 'number' &&
+        typeof pinState.userAccuracy === 'number' &&
+        accuracy > pinState.userAccuracy + 25 &&
+        ts < gpsLastFixAt + 8000
+      ) return false;
+    }
+    gpsLastFixAt = Math.max(gpsLastFixAt, ts);
+    setUserPosition(lat, lng, accuracy);
+    return true;
+  }
+  function centerMapOnMyLocation(){
+    if(pinState.userLat == null || pinState.userLng == null) return;
+    const me = { lat: pinState.userLat, lng: pinState.userLng };
+    if(pinMap && document.getElementById('screen-pins').classList.contains('active')){
+      setMapViewAtZoom(pinMap, [me], { animate: true });
+    }
+    if(playHoleMap && document.getElementById('screen-hole-pin').classList.contains('active')){
+      setMapViewAtZoom(playHoleMap, [me], { animate: true });
+    }
   }
   function resyncMyLocation(){
     if(gpsResyncInFlight) return;
@@ -1370,36 +1405,24 @@
     if(statusPin) statusPin.textContent = '위치 동기화 중…';
     if(statusHole) statusHole.textContent = '위치 동기화 중…';
     startPinGps();
+    // 동기화 직후 잠시 watch의 오래된 캐시 좌표를 무시
+    gpsIgnoreUntil = Date.now() + 2500;
     navigator.geolocation.getCurrentPosition(
       pos => {
         gpsResyncInFlight = false;
         setLocateButtonsSyncing(false);
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setUserPosition(lat, lng, pos.coords.accuracy);
-        const me = { lat: lat, lng: lng };
-        if(pinMap && document.getElementById('screen-pins').classList.contains('active')){
-          const pin = getActivePin();
-          if(pin){
-            setMapViewAtZoom(pinMap, [me, { lat: pin.lat, lng: pin.lng }], { animate: true });
-          } else {
-            setMapViewAtZoom(pinMap, [me], { animate: true });
-          }
-        }
-        if(playHoleMap && document.getElementById('screen-hole-pin').classList.contains('active')){
-          const holePin = getCurrentHolePin();
-          if(holePin){
-            setMapViewAtZoom(playHoleMap, [me, { lat: holePin.lat, lng: holePin.lng }], { animate: true });
-          } else {
-            setMapViewAtZoom(playHoleMap, [me], { animate: true });
-          }
-        }
-        prefetchMapTiles([me]);
-        showToast('현재 위치 동기화됨');
+        applyGpsPosition(pos, { force: true });
+        centerMapOnMyLocation();
+        prefetchMapTiles([{ lat: pos.coords.latitude, lng: pos.coords.longitude }]);
+        const acc = (typeof pos.coords.accuracy === 'number' && isFinite(pos.coords.accuracy))
+          ? (' (±' + Math.round(pos.coords.accuracy) + 'm)')
+          : '';
+        showToast('현재 위치 동기화됨' + acc);
       },
       err => {
         gpsResyncInFlight = false;
         setLocateButtonsSyncing(false);
+        gpsIgnoreUntil = 0;
         const messages = {
           1: '위치 권한이 거부되었습니다. 설정에서 위치 접근을 허용하세요.',
           2: '위치를 확인할 수 없습니다.',
@@ -1410,7 +1433,7 @@
         if(statusHole) statusHole.textContent = msg;
         showToast(msg);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   }
 
@@ -2766,6 +2789,7 @@
     movingPinId: null,
     userLat: null,
     userLng: null,
+    userAccuracy: null,
     gpsStarted: false,
     mapReady: false
   };
@@ -3111,6 +3135,9 @@
   function setUserPosition(lat, lng, accuracy){
     pinState.userLat = lat;
     pinState.userLng = lng;
+    if(typeof accuracy === 'number' && isFinite(accuracy)){
+      pinState.userAccuracy = accuracy;
+    }
     if(pinMap){
       if(!userMarker){
         userMarker = L.marker([lat, lng], {
@@ -3154,7 +3181,7 @@
     status.textContent = 'GPS 권한을 허용해 주세요…';
     const onOk = pos => {
       const firstFix = pinState.userLat == null;
-      setUserPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+      if(!applyGpsPosition(pos)) return;
       if(firstFix && distanceLineVisible){
         showDistanceToPin();
       }
@@ -3170,12 +3197,9 @@
       };
       status.textContent = messages[err.code] || 'GPS 오류';
     };
-    navigator.geolocation.getCurrentPosition(onOk, onErr, {
-      enableHighAccuracy: true, timeout: 15000, maximumAge: 5000
-    });
-    navigator.geolocation.watchPosition(onOk, onErr, {
-      enableHighAccuracy: true, timeout: 20000, maximumAge: 2000
-    });
+    const gpsOpts = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
+    navigator.geolocation.getCurrentPosition(onOk, onErr, gpsOpts);
+    pinState.gpsWatchId = navigator.geolocation.watchPosition(onOk, onErr, gpsOpts);
   }
   function fitPinMap(){
     if(!pinMap || pinState.pins.length === 0) return;
